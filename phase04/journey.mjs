@@ -38,13 +38,42 @@ export function acceptsTool(journey, tool) {
   return action.tool ? action.tool === tool : journey.mask ? tool === journey.mask : MASK_TOOLS.includes(tool);
 }
 
+// Each reachable stencil cell is counted once, regardless of repeated strokes.
+function spatialCoverage(session, kind) {
+  const cells = session.cells;
+  const xs = cells.map(c => c.x), ys = cells.map(c => c.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const midX = (minX + maxX) / 2;
+  const top = minY + (maxY - minY) * .36;
+  const bottom = minY + (maxY - minY) * .73;
+  const regions = new Map();
+  let treated = 0;
+  for (const cell of cells) {
+    const covered = kind === 'cream' ? cell.hydration > 0 : cell.product === 'foam';
+    const region = cell.y < top ? 'forehead' :
+      cell.y > bottom ? 'chin' :
+      Math.abs(cell.x - midX) < (maxX - minX) * .12 ? 'nose' :
+      cell.x < midX ? 'leftCheek' : 'rightCheek';
+    const bucket = regions.get(region) || { total: 0, covered: 0 };
+    bucket.total++;
+    if (covered) { bucket.covered++; treated++; }
+    regions.set(region, bucket);
+  }
+  const overall = treated / cells.length;
+  const minimum = Math.min(...[...regions.values()].filter(r => r.total >= 8)
+    .map(r => r.covered / r.total));
+  // 88% total, with at least 55% of each reachable macrozone.
+  return Math.min(overall / .88, minimum / .55);
+}
+
 function progress(journey, skin) {
   const kind = journey.sequence[journey.index];
   const { session, rinseFrom } = journey;
   if (rinseFrom) return 1 - skin.covered / rinseFrom;
   if (kind === 'mask') return skin.covered / session.cells.length / 0.96;
-  if (kind === 'cleanse') return skin.covered / session.cells.length / 0.52;
-  if (kind === 'cream') return skin.hydration / 0.28;
+  if (kind === 'cleanse') return spatialCoverage(session, kind);
+  if (kind === 'cream') return spatialCoverage(session, kind);
   const { conditions } = session;
   if (!conditions.length) return 0;
   return conditions.reduce((sum, item) => sum + 1 - item.intensity / item.initial, 0) / conditions.length;
