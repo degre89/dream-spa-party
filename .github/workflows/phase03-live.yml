@@ -51,9 +51,27 @@ jobs:
             exit 1
           fi
           echo 'Verified index.html' | tee test-results/live-assets.log
-          for file in 'spa.js?v=4' 'spa.css?v=4' phase03/{clients,facial-state,skin-view}.mjs phase04/journey.mjs assets/*; do
-            curl -fsSL --retry 2 --max-time 15 "${SPA_URL}$file" -o "$response"
-            cmp "${file%%\?*}" "$response"
+          # Verify every published asset, not only index.html. Pages/CDN can
+          # briefly serve mixed revisions after a successful deployment.
+          for file in 'spa.js' 'spa.css' phase03/{clients,facial-state,skin-view}.mjs phase04/journey.mjs assets/*; do
+            matched=false
+            for attempt in $(seq 1 48); do
+              if curl -fsSL --retry 2 --max-time 15 "${SPA_URL}$file?release=${GITHUB_SHA}&attempt=$attempt" -o "$response" &&
+                 cmp -s "$file" "$response"; then
+                matched=true
+                break
+              fi
+              if [ "$attempt" -eq 1 ]; then
+                echo "Waiting for public $file to match commit $GITHUB_SHA" | tee -a test-results/live-assets.log
+                sha256sum "$file" "$response" | tee -a test-results/live-assets.log
+              fi
+              sleep 5
+            done
+            if [ "$matched" != true ]; then
+              echo "Public asset mismatch after retries: $file" | tee -a test-results/live-assets.log
+              cmp "$file" "$response" || true
+              exit 1
+            fi
             echo "Verified $file" | tee -a test-results/live-assets.log
           done
       - name: Play nine sessions on the official site
