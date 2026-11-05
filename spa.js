@@ -1,4 +1,5 @@
-import { advice, completeSession, createSession, endStroke, MASK_TOOLS, readSkin, SPA_TOOLS, treat } from './phase03/facial-state.mjs';
+import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs';
+import { acceptsTool, advanceJourney, applyGesture, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs';
 import { clients } from './phase03/clients.mjs';
 import { createSkinView, loadStencil } from './phase03/skin-view.mjs';
 
@@ -33,22 +34,22 @@ try {
 } catch {}
 $('#stars').textContent = stars;
 
-let client, skin, session, selected;
+let client, skin, journey, selected;
 let portrait = $('#home .portrait');
-let blinkTimer, openTimer, reactionTimer;
+let blinkTimer, openTimer, reactionTimer, transitionTimer;
+let feedback;
+let creamTrace = [];
 let pointer = null;
 let handledTap;
 let frame = 0;
 let lastEffect = 0;
 let nextReaction = 0;
-let rinseStart = 0;
-let seed;
 const stencils = new Map();
 
 function scheduleBlink() {
   if (reducedMotion.matches || document.hidden || !portrait) return;
   blinkTimer = setTimeout(() => {
-    if (!portrait.classList.contains('relax')) {
+    if (!portrait.classList.contains('relax') && !portrait.classList.contains('puzzled')) {
       portrait.classList.add('blink');
       openTimer = setTimeout(() => portrait.classList.remove('blink'), 145);
     }
@@ -64,8 +65,9 @@ function resetBlink() {
 }
 
 function show(id) {
-  clearTimeout(reactionTimer);
-  portrait?.classList.remove('blink', 'relax', 'smile');
+  clearTimeout(transitionTimer);
+  clearReaction();
+  portrait?.classList.remove('blink');
   for (const screen of document.querySelectorAll('.screen')) {
     screen.classList.toggle('on', screen.id === id);
   }
@@ -73,11 +75,20 @@ function show(id) {
   resetBlink();
 }
 
-function react(expression) {
+function clearReaction() {
   clearTimeout(reactionTimer);
-  portrait.classList.remove('smile', 'relax');
+  portrait?.classList.remove('smile', 'relax', 'puzzled');
+  feedback = null;
+}
+
+function react(expression, message, duration = 950) {
+  clearReaction();
   portrait.classList.add(expression);
-  reactionTimer = setTimeout(() => portrait.classList.remove(expression), 520);
+  feedback = { expression, message };
+  reactionTimer = setTimeout(() => {
+    clearReaction();
+    render();
+  }, duration);
 }
 
 function setPortrait(container, id) {
@@ -87,9 +98,9 @@ function setPortrait(container, id) {
   image.src = 'assets/' + profile.portrait;
   image.alt = profile.name;
   container.querySelector('.eyelids').src = 'assets/' + profile.eyelids;
-  const smile = container.querySelector('.grin');
-  if (profile.smile) smile.src = 'assets/' + profile.smile;
-  else smile.removeAttribute('src');
+  container.querySelector('.grin').src = 'assets/' + profile.smile;
+  const puzzled = container.querySelector('.puzzled-face');
+  if (puzzled) puzzled.src = 'assets/' + profile.puzzled;
 }
 
 function setCart(open) {
@@ -97,63 +108,79 @@ function setCart(open) {
   $('#cartToggle').setAttribute('aria-expanded', String(open));
 }
 
-function selectTool(id) {
-  stopStroke();
+function updateTool(id) {
   selected = id;
-  rinseStart = id === 'sponge' ? readSkin(session).covered : 0;
   for (const button of cart.children) button.setAttribute('aria-pressed', String(button.dataset.tool === id));
   character.classList.toggle('rinsing', id === 'sponge');
   cursor.replaceChildren();
-  if (tools[id].icon && id !== 'sponge') cursor.append(toolIcon(id));
-  if (!tools[id].icon) cursor.textContent = '✦';
+  if (!id || id === 'sponge') return;
+  if (tools[id].icon) cursor.append(toolIcon(id));
+  else cursor.textContent = '✦';
+}
+
+function selectTool(id) {
+  stopStroke();
+  updateTool(id);
   setCart(false);
   $('#cartToggle').focus({ preventScroll: true });
-  react('smile');
+  if (!journey.pending) {
+    if (acceptsTool(journey, id)) {
+      react('smile', 'Proviamo sul viso!');
+    } else {
+      journey.mistakes++;
+      const message = journey.mistakes === 1 ? 'Mmm… proviamo qualcos’altro?' : help();
+      react('puzzled', message);
+    }
+  }
   render();
+}
+
+function help() {
+  const action = currentAction(journey);
+  if (journey.mistakes >= 3) {
+    if (action.tool) return 'Prova: ' + tools[action.tool].label + '.';
+    if (journey.mask) return 'Continua con ' + tools[journey.mask].label + '.';
+  }
+  if (journey.mask && !action.tool) return 'Cerca il vasetto già usato.';
+  return action.hint;
 }
 
 function render() {
   cancelAnimationFrame(frame);
   frame = 0;
-  draw(session, skin.stencil);
-  const { cleanliness, glow, hydration, covered } = readSkin(session);
-  const suggested = advice(session);
-  const applied = Math.floor(100 * covered / session.cells.length);
-  const rinsed = rinseStart ? Math.round(100 * (1 - covered / rinseStart)) : 0;
-  const improvement = Math.min(1, (glow - (1 - session.dullness)) / 0.12);
-  const conditionProgress = session.conditions.length ?
-    session.conditions.reduce((sum, item) => sum + Math.min(1, (1 - item.intensity / item.initial) / 0.6), 0) /
-      session.conditions.length : 1;
-  const progress = suggested ? Math.min(99, Math.round((0.72 * conditionProgress + 0.28 * improvement) * 100)) : 100;
-  const percent = selected === 'sponge' && rinseStart ? rinsed : MASK_TOOLS.includes(selected) ? applied : progress;
+  const now = performance.now();
+  creamTrace = creamTrace.filter(point => point.expires > now);
+  draw(journey.session, skin.stencil, false, client.id, creamTrace.map(point => ({
+    ...point, alpha: 0.55 * (point.expires - now) / 680
+  })));
+  if (creamTrace.length) frame = requestAnimationFrame(render);
+
+  const step = currentStep(journey);
+  const action = currentAction(journey);
+  const percent = journeyPercent(journey);
   const meter = $('#meter');
   $('#fill').style.width = percent + '%';
   meter.setAttribute('aria-valuenow', percent);
-  meter.setAttribute('aria-label', selected === 'sponge' && rinseStart ? 'Risciacquo' :
-    MASK_TOOLS.includes(selected) ? 'Pelle coperta' : 'Progresso del trattamento');
+  meter.setAttribute('aria-label', journey.rinseFrom ? 'Risciacquo' : 'Progresso del trattamento');
   $('#percent').textContent = percent + '%';
-  const label = client.name + ' · ' + (selected ? tools[selected].label : 'Spa');
+  const label = client.name + ' · ' + (journey.index + 1) + '/' + journey.sequence.length;
   if ($('#step').textContent !== label) $('#step').textContent = label;
-  const message = !suggested ? 'Pelle luminosa! Puoi concludere o provare altri prodotti.' :
-    suggested === selected ? tools[selected].hint :
-    (selected ? tools[selected].hint + ' ' : '') + 'Prova: ' + tools[suggested].label.toLowerCase() + '.';
-  const hint = '✿ Aiutante · ' + message;
-  if ($('#hint').textContent !== hint) $('#hint').textContent = hint;
-  // Allow a quick transition at the original mask threshold. The cart always stays available.
-  const quickRinse = MASK_TOOLS.includes(selected) && applied >= 96;
-  next.dataset.action = quickRinse ? 'rinse' : 'finish';
-  const nextLabel = quickRinse ? 'Risciacqua' : 'Concludi ✦';
-  if (next.textContent !== nextLabel) next.textContent = nextLabel;
-  next.disabled = Boolean(suggested) && !quickRinse;
-  canvas.setAttribute('aria-description', 'Pulizia ' + Math.round(cleanliness * 100) +
-    '%, luminosità ' + Math.round(glow * 100) + '%, idratazione ' + Math.round(hydration * 100) + '%.');
+  const title = step.icon + ' ' + step.title;
+  if ($('#goal').textContent !== title) $('#goal').textContent = title;
+  const message = feedback?.message ?? (selected && acceptsTool(journey, selected) ?
+    tools[selected].hint : journey.mistakes >= 2 ? help() : action.prompt);
+  const hint = $('#hint');
+  hint.dataset.feedback = feedback?.expression ?? '';
+  if (hint.textContent !== message) hint.textContent = message;
+  next.hidden = !journey.rinseFrom || journey.pending || selected === 'sponge';
+  canvas.setAttribute('aria-description', action.prompt);
 }
 
 function stopStroke() {
   const id = pointer;
   pointer = null;
   if (id !== null && canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
-  if (session) endStroke(session);
+  if (journey) endStroke(journey.session);
   cursor.classList.remove('held');
 }
 
@@ -165,20 +192,36 @@ function move(event) {
   cursor.style.left = x / width * 100 + '%';
   cursor.style.top = y / height * 100 + '%';
   cursor.classList.add('held');
-  if (!treat(session, selected, { x, y })) return;
-  if (!frame) frame = requestAnimationFrame(render);
+  const result = applyGesture(journey, selected, { x, y });
+  if (!result) return;
+
   const now = performance.now();
-  if (now >= nextReaction) {
-    react(selected === 'sponge' ? 'smile' : 'relax');
-    nextReaction = now + 3100;
+  if (selected === 'cream' && !reducedMotion.matches && now - lastEffect >= 60) {
+    creamTrace.push({ x, y, expires: now + 680 });
   }
-  if (now - lastEffect < 100 || reducedMotion.matches) return;
+  if (result === 'rinse' || result === 'complete') {
+    stopStroke();
+    react('smile', result === 'rinse' ? 'Fatto! Ora risciacquiamo.' : 'Che bello! ✦');
+    sparkle(x, y, '✧ ✦', true);
+    if (result === 'complete') transitionTimer = setTimeout(nextStep, 780);
+  } else if (now >= nextReaction) {
+    react('smile', 'Che sollievo!');
+    portrait.classList.add('relax');
+    nextReaction = now + 2300;
+  }
+  if (!frame) frame = requestAnimationFrame(render);
+  if (now - lastEffect < 100) return;
   lastEffect = now;
+  if (result === 'improved') sparkle(x, y, selected === 'sponge' ? '○ ✦' : '✧');
+}
+
+function sparkle(x, y, text, success = false) {
+  if (reducedMotion.matches) return;
   const particle = document.createElement('span');
-  particle.className = 'particle';
-  particle.textContent = selected === 'sponge' ? '○ ✦ °' : '✧';
-  particle.style.left = cursor.style.left;
-  particle.style.top = cursor.style.top;
+  particle.className = success ? 'particle celebration' : 'particle';
+  particle.textContent = text;
+  particle.style.left = x / width * 100 + '%';
+  particle.style.top = y / height * 100 + '%';
   particle.addEventListener('animationend', () => particle.remove(), { once: true });
   character.append(particle);
 }
@@ -188,17 +231,21 @@ function compare(before) {
   $('#after').setAttribute('aria-pressed', String(!before));
   portrait.classList.toggle('smile', !before);
   $('#comparison').setAttribute('aria-label', 'Pelle ' + (before ? 'prima' : 'dopo') + ' il trattamento');
-  drawComparison(session, skin.stencil, before);
+  drawComparison(journey.session, skin.stencil, before, client.id);
 }
 
-function advance() {
-  if (!$('#spa').classList.contains('on') || next.disabled) return;
-  if (next.dataset.action === 'rinse') {
-    selectTool('sponge');
+function nextStep() {
+  stopStroke();
+  clearReaction();
+  nextReaction = 0;
+  creamTrace = [];
+  cancelAnimationFrame(frame);
+  frame = 0;
+  if (!advanceJourney(journey)) {
+    updateTool(undefined);
+    render();
     return;
   }
-  if (!completeSession(session)) return;
-  stopStroke();
   stars += 3;
   try { localStorage.setItem('dsp-stars', String(stars)); } catch {}
   $('#stars').textContent = stars;
@@ -212,22 +259,19 @@ function start(id) {
   skin = stencils.get(id);
   if (!skin) return;
   client = { ...clients[id], id };
-  seed = (seed === undefined ? crypto.getRandomValues(new Uint32Array(1))[0] : seed + 1) >>> 0;
-  session = createSession({
-    width, height, skinAt: skin.skinAt, seed,
+  journey = createJourney({
+    width, height, client: id, skinAt: skin.skinAt, seed: crypto.getRandomValues(new Uint32Array(1))[0],
     regions: client.regions.map(([x, y, radius]) => ({ x, y, radius }))
   });
-  selected = undefined;
-  rinseStart = 0;
+  creamTrace = [];
   nextReaction = 0;
   lastEffect = 0;
-  character.classList.remove('rinsing');
+  updateTool(undefined);
   character.querySelectorAll('.particle').forEach(particle => particle.remove());
-  for (const button of cart.children) button.setAttribute('aria-pressed', 'false');
   setPortrait($('#spa .portrait'), id);
   show('spa');
   render();
-  setCart(true);
+  setCart(false);
 }
 
 for (const id of SPA_TOOLS) {
@@ -288,7 +332,7 @@ for (const selector of ['#chooseHome', '#back', '#goHome']) bindAction($(selecto
 bindAction($('#cartToggle'), () => setCart(cart.hidden));
 bindAction($('#before'), () => compare(true));
 bindAction($('#after'), () => compare(false));
-bindAction(next, advance);
+bindAction(next, () => { if (!next.hidden) selectTool('sponge'); });
 
 function toolIcon(id) {
   const namespace = 'http://www.w3.org/2000/svg';
