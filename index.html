@@ -14,15 +14,29 @@
     <header class="top"><span class="pill">✿ Dream Spa</span><span class="pill">⭐ <span id="stars">0</span></span></header>
     <h1>Dream <span>Spa Party</span></h1>
     <p class="tagline">Il tuo salone magico</p>
-    <div class="stage"><img class="hero" src="assets/girl.webp" alt="La protagonista con un fiocco rosa"></div>
+    <div class="stage"><div class="portrait"><img class="hero" src="assets/girl.webp" alt="La protagonista con un fiocco rosa" draggable="false"><img class="expression eyelids" src="assets/eyelids.svg" alt="" draggable="false"><img class="expression grin" src="assets/smile.svg" alt="" draggable="false"></div></div>
     <footer><button class="cta" id="play" disabled>▶ Gioca</button><p id="status" role="status">La tua prima giornata alla Spa!</p></footer>
+  </section>
+  <section class="screen" id="choose">
+    <header class="top"><button class="pill" id="chooseHome">⌂ Home</button><span class="pill">✿ Magic Masks</span></header>
+    <h2>Scegli la tua maschera</h2>
+    <div class="stage"><div class="portrait"><img class="hero" src="assets/girl.webp" alt="La protagonista con un fiocco rosa" draggable="false"><img class="expression eyelids" src="assets/eyelids.svg" alt="" draggable="false"><img class="expression grin" src="assets/smile.svg" alt="" draggable="false"></div><p id="bubble" role="status" hidden></p></div>
+    <footer class="selector">
+      <div class="jars" role="group" aria-label="Maschere disponibili">
+        <button class="jar" type="button" data-mask="strawberry" aria-pressed="false"><img src="assets/jar-strawberry.svg" alt=""><span>Fragola</span></button>
+        <button class="jar" type="button" data-mask="avocado" aria-pressed="false"><img src="assets/jar-avocado.svg" alt=""><span>Avocado</span></button>
+        <button class="jar" type="button" data-mask="blueberry" aria-pressed="false"><img src="assets/jar-blueberry.svg" alt=""><span>Mirtillo</span></button>
+        <button class="jar" type="button" data-mask="honey" aria-pressed="false"><img src="assets/jar-honey.svg" alt=""><span>Miele</span></button>
+      </div>
+      <button class="cta" id="begin" disabled>Inizia il trattamento</button>
+    </footer>
   </section>
   <section class="screen" id="spa">
     <header class="top"><button class="pill" id="back">⌂ Home</button><span class="pill" id="step"></span></header>
     <h2>Momento Spa</h2>
     <div class="stage">
       <div id="character">
-        <img class="hero" src="assets/girl.webp" alt="Viso da trattare" draggable="false">
+        <div class="portrait"><img class="hero" src="assets/girl.webp" alt="La protagonista con un fiocco rosa" draggable="false"><img class="expression eyelids" src="assets/eyelids.svg" alt="" draggable="false"><img class="expression grin" src="assets/smile.svg" alt="" draggable="false"></div>
         <canvas id="mask" width="512" height="640" aria-label="Superficie del trattamento"></canvas>
         <span id="tool" aria-hidden="true"></span>
       </div>
@@ -37,7 +51,7 @@
     </footer>
   </section>
   <section class="screen" id="done">
-    <div class="award" aria-hidden="true">✦ ★ ✦</div>
+    <div class="stage"><div class="portrait"><img class="hero" src="assets/girl.webp" alt="La protagonista con un fiocco rosa" draggable="false"><img class="expression eyelids" src="assets/eyelids.svg" alt="" draggable="false"><img class="expression grin" src="assets/smile.svg" alt="" draggable="false"></div><div class="award" aria-hidden="true">✦ ★ ✦</div></div>
     <h2>Fantastico!</h2>
     <p class="reward">Trattamento completato!<br>Hai guadagnato 3 stelle.</p>
     <button class="cta" id="again">Gioca ancora</button>
