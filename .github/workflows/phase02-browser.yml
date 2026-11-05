@@ -2,22 +2,43 @@ name: Phase 02 browser checks
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+    paths: [index.html, spa.js, spa.css, 'assets/**']
 permissions:
   contents: read
 jobs:
   chromium:
-    if: github.head_ref == 'development/phase02-magic-masks'
+    if: github.event_name == 'push' || github.head_ref == 'development/phase02-magic-masks'
     runs-on: ubuntu-latest
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
-      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
-      - run: |
+      - run: npm install --no-save --fetch-retries=1 playwright
+      - name: Check live Pages bytes
+        if: github.event_name == 'push'
+        run: |
+          base=https://degre89.github.io/dream-spa-party
+          for attempt in $(seq 1 35); do
+            if curl -fsS --max-time 8 "$base/?release=$GITHUB_SHA" -o /tmp/spa-pages-index && cmp -s index.html /tmp/spa-pages-index; then break; fi
+            sleep 6
+          done
+          cmp index.html /tmp/spa-pages-index
+          for file in spa.js spa.css assets/{girl.webp,spa.webp,skin.svg,eyelids.svg,smile.svg,jar-*.svg}; do
+            curl -fsS --max-time 15 "$base/$file?release=$GITHUB_SHA" -o /tmp/spa-pages-file
+            cmp "$file" /tmp/spa-pages-file
+          done
+      - name: Exercise the four treatments
+        env:
+          LIVE: ${{ github.event_name == 'push' }}
+        run: |
           python3 -m http.server 8000 &
+          for attempt in $(seq 1 10); do curl -fsS http://localhost:8000/ -o /dev/null && break; sleep 1; done
           node <<'JS'
           const { chromium } = require('playwright');
           const assert = require('node:assert/strict');
           (async () => {
-            const browser = await chromium.launch();
+            const browser = await chromium.launch({channel:'chrome'});
             try {
               for (const [width,height,touch] of [[320,568,true],[412,915,true],[1280,720,false]]) {
                 const ctx = await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch});
@@ -25,8 +46,8 @@ jobs:
                 const cdp = await ctx.newCDPSession(page);
                 const errors = [];
                 page.on('pageerror', e => errors.push(e.message));
-                page.on('response', r => { if(r.status()>=400) errors.push(r.url()+' '+r.status()); });
-                await page.goto('http://localhost:8000/');
+                page.on('response', r => { if(r.status()>=400 && !r.url().endsWith('/favicon.ico')) errors.push(r.url()+' '+r.status()); });
+                await page.goto(process.env.LIVE === 'true' ? 'https://degre89.github.io/dream-spa-party/' : 'http://localhost:8000/');
                 await page.locator('#play:enabled').waitFor();
                 await page.locator('#home .blink').waitFor({state:'attached',timeout:7000});
                 const activate = selector => touch ? page.locator(selector).tap() : page.locator(selector).click();
@@ -38,6 +59,7 @@ jobs:
                   assert.equal(await jar.getAttribute('aria-pressed'),'true');
                   assert(await page.locator('#bubble').isVisible());
                   await page.screenshot({path:'choose-'+width+'.png'});
+                  if(width===320&&id==='honey') console.log('CHOOSE_JPEG '+(await page.screenshot({type:'jpeg',quality:24})).toString('base64'));
                   await activate('#begin');
                   const b=await page.locator('#mask').boundingBox();
                   async function sweep(from,to) {
@@ -58,6 +80,12 @@ jobs:
                   }
                   const pixels = coords => page.locator('#mask').evaluate((c, coords)=>coords.map(([x,y])=>Array.from(c.getContext('2d').getImageData(x,y,1,1).data)),coords);
                   assert(await page.locator('#next').isDisabled());
+                  await sweep(.34,.34);
+                  assert(await page.locator('#spa .relax').isVisible());
+                  if(width===320&&id==='honey') {
+                    await page.waitForTimeout(220);
+                    console.log('RELAX_JPEG '+(await page.screenshot({type:'jpeg',quality:24})).toString('base64'));
+                  }
                   await sweep(.285,.70);
                   await page.locator('#next:enabled').waitFor();
                   const [forehead,...protectedPixels]=await pixels([[256,184],[194,294],[316,294],[257,387],[190,231],[257,90]]);
@@ -67,6 +95,8 @@ jobs:
                   await page.screenshot({path:'apply-'+id+'-'+width+'.png'});
                   await activate('#next');
                   assert(await page.locator('#next').isDisabled());
+                  await sweep(.34,.34);
+                  assert(await page.locator('#spa .smile').isVisible());
                   await sweep(.285,.70);
                   await page.locator('#next:enabled').waitFor();
                   assert.equal((await pixels([[256,184]]))[0][3],0);
