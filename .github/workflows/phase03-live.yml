@@ -1,4 +1,4 @@
-name: Phase 03 live Pages checks
+name: Phase 04 live Pages checks
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - spa.css
       - 'assets/**'
       - 'phase03/**'
+      - 'phase04/**'
       - '.github/workflows/phase03-live.yml'
   workflow_dispatch:
 
@@ -17,6 +18,7 @@ permissions:
 
 jobs:
   live-chromium:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -49,17 +51,17 @@ jobs:
             exit 1
           fi
           echo 'Verified index.html' | tee test-results/live-assets.log
-          for file in 'spa.js?v=3' 'spa.css?v=3' phase03/{clients,facial-state,skin-view}.mjs assets/*; do
+          for file in 'spa.js?v=4' 'spa.css?v=4' phase03/{clients,facial-state,skin-view}.mjs phase04/journey.mjs assets/*; do
             curl -fsSL --retry 2 --max-time 15 "${SPA_URL}$file" -o "$response"
             cmp "${file%%\?*}" "$response"
             echo "Verified $file" | tee -a test-results/live-assets.log
           done
       - name: Play nine sessions on the official site
         shell: bash
-        run: node --test --test-reporter=tap phase03/browser.test.mjs | tee test-results/report.tap
+        run: node --test --test-reporter=tap phase04/browser.test.mjs | tee test-results/report.tap
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase03-live
+          name: dream-spa-phase04-live
           path: test-results/
           if-no-files-found: warn
