@@ -119,12 +119,12 @@ for (const [width, height, touch] of devices) {
       await viewportFits();
       await shot('01-home');
       await activate('#play');
-      await element('[data-client="maya"]:enabled').waitFor();
+      await element('#choose [data-client="maya"]:enabled').waitFor();
       await shot('02-clienti');
 
       let index = 0;
       for (const [id, profile] of Object.entries(clients)) {
-        await activate(`[data-client="${id}"]`);
+        await activate(`#choose [data-client="${id}"]`);
         await element(`#spa.on .portrait[data-client="${id}"]`).waitFor();
         await viewportFits();
         assert.ok(await element('#spa .hero').evaluate(async image => { await image.decode(); return image.naturalWidth > 0; }));
@@ -218,14 +218,14 @@ for (const [width, height, touch] of devices) {
         index++;
       }
 
-      await activate('[data-client="sofia"]');
+      await activate('#choose [data-client="sofia"]');
       await element('#spa.on').waitFor();
       const nextConditions = await knownConditions('sofia', seed + index);
       assert.notDeepEqual(nextConditions, await knownConditions('sofia', seed));
       const renewed = await canvasPNG('#mask');
       await activate('#back');
       await activate('#play');
-      await activate('[data-client="sofia"]');
+      await activate('#choose [data-client="sofia"]');
       assert.notEqual(await canvasPNG('#mask'), renewed, 'new sessions vary the visible imperfections');
       await page.reload();
       await element('#play:enabled').waitFor();
