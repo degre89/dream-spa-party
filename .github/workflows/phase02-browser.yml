@@ -14,9 +14,16 @@ jobs:
     timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
-      - run: npm install --no-save --fetch-retries=1 playwright
+      - name: Identify the Phase 02 entry point
+        id: phase02
+        run: |
+          if grep -Fq 'spa.js?v=2' index.html; then
+            echo 'active=true' >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.phase02.outputs.active == 'true'
+        run: npm install --no-save --fetch-retries=1 playwright
       - name: Check live Pages bytes
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.phase02.outputs.active == 'true'
         run: |
           base=https://degre89.github.io/dream-spa-party
           for attempt in $(seq 1 35); do
@@ -29,6 +36,7 @@ jobs:
             cmp "$file" /tmp/spa-pages-file
           done
       - name: Exercise the four treatments
+        if: steps.phase02.outputs.active == 'true'
         env:
           LIVE: ${{ github.event_name == 'push' }}
         run: |
@@ -157,7 +165,7 @@ jobs:
           })().catch(e=>{console.error(e);process.exitCode=1;});
           JS
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.phase02.outputs.active == 'true'
         with:
           name: phase02-browser-screens
           path: '*.png'

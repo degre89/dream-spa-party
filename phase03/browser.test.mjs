@@ -112,6 +112,7 @@ for (const [width, height, touch] of devices) {
       }, { id, sessionSeed });
     }
 
+    let failed = false;
     try {
       await page.goto(baseURL);
       await element('#play:enabled').waitFor();
@@ -232,11 +233,12 @@ for (const [width, height, touch] of devices) {
       assert.equal(await element('#stars').innerText(), '16');
       assert.deepEqual(errors, [], 'browser errors');
     } catch (error) {
+      failed = true;
       await shot('failure').catch(() => {});
       throw error;
     } finally {
       await writeFile(dir + '/browser-errors.json', JSON.stringify(errors, null, 2));
-      await context.tracing.stop({ path: dir + '/trace.zip' });
+      await context.tracing.stop(failed ? { path: dir + '/trace.zip' } : {});
       await browser.close();
     }
   });
