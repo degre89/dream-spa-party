@@ -30,7 +30,7 @@ function makeCells(width, height, skinAt) {
   for (let y = spacing / 2; y < height; y += spacing) {
     for (let x = spacing / 2; x < width; x += spacing) {
       if (!skinAt(x, y)) continue;
-      cells.push({ x, y, clean: 0, glow: 0, hydration: 0, product: null });
+      cells.push({ x, y, clean: 0, glow: 0, hydration: 0, product: null, creamUntil: 0 });
     }
   }
   if (!cells.length) throw new Error('Sagoma cutanea vuota');
@@ -103,6 +103,7 @@ function changeCell(cell, tool, strength) {
   if (tool === 'cream' && !cell.product) {
     cell.hydration = clamp(cell.hydration + strength * 0.18);
     cell.glow = clamp(cell.glow + strength * 0.13);
+    cell.creamUntil = performance.now() + 1500;
   }
   const after = [cell.clean, cell.glow, cell.hydration, cell.product];
   return before.some((value, index) => value !== after[index]);
