@@ -287,7 +287,28 @@ $('#chooseHome').onclick = $('#back').onclick = $('#goHome').onclick = () => {
   show('home');
 };
 switchPortrait($('#home'));
-$('#next').onclick = () => {
+const nextButton = $('#next');
+nextButton.onclick = advance;
+let touchPress = null;
+
+// A drag on the canvas can suppress Chromium's synthesized click on the next tap.
+nextButton.addEventListener('pointerdown', event => {
+  if (event.pointerType !== 'touch' || !event.isPrimary || nextButton.disabled) return;
+  touchPress = { id: event.pointerId, x: event.clientX, y: event.clientY };
+});
+nextButton.addEventListener('pointercancel', event => {
+  if (event.pointerId === touchPress?.id) touchPress = null;
+});
+nextButton.addEventListener('pointerup', event => {
+  if (event.pointerId !== touchPress?.id) return;
+  const distance = Math.hypot(event.clientX - touchPress.x, event.clientY - touchPress.y);
+  touchPress = null;
+  if (distance > 12 || nextButton.disabled) return;
+  const target = document.elementFromPoint(event.clientX, event.clientY);
+  if (nextButton.contains(target)) advance();
+});
+
+function advance() {
   if (!$('#spa').classList.contains('on')) return;
   if (rinsing) {
     if (remaining !== 0) return;
@@ -312,4 +333,4 @@ $('#next').onclick = () => {
   $('#hint').textContent = 'Passa la spugnetta sulla maschera!';
   $('#next').textContent = 'Finisci ✨';
   render();
-};
+}
