@@ -49,8 +49,19 @@ for (const [width, height, touch] of devices) {
     const element = selector => page.locator(selector);
 
     async function activate(selector) {
-      if (touch) await element(selector).tap();
-      else await element(selector).click();
+      const button = element(selector);
+      if (!touch) {
+        await button.click();
+        return;
+      }
+      await button.waitFor();
+      assert.ok(await button.isEnabled(), selector + ' is enabled');
+      const box = await button.boundingBox();
+      const point = { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
+      await dispatch('touchStart', point);
+      // A real tap has time between contact and release, including after a swipe.
+      await page.waitForTimeout(55);
+      await dispatch('touchEnd');
     }
 
     async function pick(tool) {
@@ -174,12 +185,12 @@ for (const [width, height, touch] of devices) {
           assert.ok(forehead[3] > 135, 'mask visible on skin');
           assert.ok(protectedPixels.every(pixel => pixel[3] === 0), 'eyes, eyebrow, lips and hair protected');
           colors.add(forehead.slice(0, 3).join(','));
-          if (index === 0 && mask === masks[0]) {
+          if (mask === masks[index]) {
             await sweep();
             await element('#next[data-action="rinse"]:enabled').waitFor();
             const afterSweep = await pixels(profile.protected);
             assert.ok(afterSweep.every(pixel => pixel[3] === 0), 'protected pixels stay clear after full application');
-            await shot('08-maschera');
+            await shot(index === 0 ? '08-maschera' : '08-maschera-' + id);
             await activate('#next');
           } else {
             await stroke([[x - 50, y + 126], [x + 55, y + 126]]);

@@ -141,7 +141,8 @@ function render() {
   // Allow a quick transition at the original mask threshold. The cart always stays available.
   const quickRinse = MASK_TOOLS.includes(selected) && applied >= 96;
   next.dataset.action = quickRinse ? 'rinse' : 'finish';
-  next.textContent = quickRinse ? 'Risciacqua' : 'Concludi ✦';
+  const nextLabel = quickRinse ? 'Risciacqua' : 'Concludi ✦';
+  if (next.textContent !== nextLabel) next.textContent = nextLabel;
   next.disabled = Boolean(suggested) && !quickRinse;
   canvas.setAttribute('aria-description', 'Pulizia ' + Math.round(cleanliness * 100) +
     '%, luminosità ' + Math.round(glow * 100) + '%, idratazione ' + Math.round(hydration * 100) + '%.');
