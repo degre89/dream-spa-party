@@ -37,6 +37,7 @@ let client, skin, session, selected;
 let portrait = $('#home .portrait');
 let blinkTimer, openTimer, reactionTimer;
 let pointer = null;
+let handledTap;
 let frame = 0;
 let lastEffect = 0;
 let nextReaction = 0;
@@ -304,7 +305,6 @@ function toolIcon(id) {
 // A canvas drag can suppress Chromium's synthesized click on the following tap.
 function bindAction(button, action) {
   let touchPress;
-  let lastTap = -Infinity;
   button.addEventListener('pointerdown', event => {
     if (event.pointerType === 'touch' && event.isPrimary && !button.disabled) {
       touchPress = { id: event.pointerId, x: event.clientX, y: event.clientY };
@@ -318,15 +318,22 @@ function bindAction(button, action) {
     const distance = Math.hypot(event.clientX - touchPress.x, event.clientY - touchPress.y);
     touchPress = null;
     if (distance > 12 || button.disabled || !button.contains(document.elementFromPoint(event.clientX, event.clientY))) return;
-    lastTap = performance.now();
+    handledTap = { x: event.clientX, y: event.clientY, time: performance.now() };
     action();
   });
-  button.addEventListener('click', event => {
-    if (event.detail && (event.pointerType === 'touch' || event.sourceCapabilities?.firesTouchEvents) &&
-        performance.now() - lastTap < 650) return;
-    action();
-  });
+  button.addEventListener('click', action);
 }
+
+// A synthesized click can land on a different control after pointerup changes screens.
+document.addEventListener('click', event => {
+  if (!handledTap || !event.detail ||
+      (event.pointerType !== 'touch' && !event.sourceCapabilities?.firesTouchEvents)) return;
+  const nearby = Math.hypot(event.clientX - handledTap.x, event.clientY - handledTap.y) <= 16;
+  if (nearby && performance.now() - handledTap.time < 650) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+}, true);
 
 document.addEventListener('visibilitychange', resetBlink);
 reducedMotion.addEventListener('change', resetBlink);
