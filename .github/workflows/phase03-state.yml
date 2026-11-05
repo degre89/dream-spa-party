@@ -1,0 +1,12 @@
+name: Phase 03 state checks
+on:
+  push:
+    branches: [development/phase03-complete-facial-spa]
+permissions:
+  contents: read
+jobs:
+  state:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test phase03/facial-state.test.mjs
