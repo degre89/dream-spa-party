@@ -14,16 +14,16 @@ const draw = createSkinView(canvas);
 const drawComparison = createSkinView($('#comparison'));
 
 const tools = {
-  cleanser: { label: 'Detergente', icon: '🫧', hint: 'Stendi la schiuma sulla pelle.' },
-  brush: { label: 'Spazzolina', icon: '🪥', hint: 'Fai piccoli cerchi dove vedi i pori.' },
-  sponge: { label: 'Spugnetta', icon: '🧽', hint: 'Passa la spugnetta sul prodotto rimasto.' },
-  gel: { label: 'Gel', icon: '💧', hint: 'Tocca i puntini con una goccia di gel.' },
-  serum: { label: 'Siero', icon: '🌸', hint: 'Massaggia piano le zone arrossate.' },
+  cleanser: { label: 'Detergente', icon: true, hint: 'Stendi la schiuma sulla pelle.' },
+  brush: { label: 'Spazzolina', icon: true, hint: 'Fai piccoli cerchi dove vedi i pori.' },
+  sponge: { label: 'Spugnetta', icon: true, hint: 'Passa la spugnetta sul prodotto rimasto.' },
+  gel: { label: 'Gel', icon: true, hint: 'Tocca i puntini con una goccia di gel.' },
+  serum: { label: 'Siero', icon: true, hint: 'Massaggia piano le zone arrossate.' },
   strawberry: { label: 'Fragola', hint: 'Stendi la maschera alla fragola.' },
   avocado: { label: 'Avocado', hint: 'Stendi la maschera all’avocado.' },
   blueberry: { label: 'Mirtillo', hint: 'Stendi la maschera al mirtillo.' },
   honey: { label: 'Miele', hint: 'Stendi la maschera al miele.' },
-  cream: { label: 'Crema', icon: '✨', hint: 'Massaggia la crema sulla pelle pulita.' }
+  cream: { label: 'Crema', icon: true, hint: 'Massaggia la crema sulla pelle pulita.' }
 };
 
 let stars = 0;
@@ -102,7 +102,9 @@ function selectTool(id) {
   rinseStart = id === 'sponge' ? readSkin(session).covered : 0;
   for (const button of cart.children) button.setAttribute('aria-pressed', String(button.dataset.tool === id));
   character.classList.toggle('rinsing', id === 'sponge');
-  cursor.textContent = id === 'sponge' ? '' : tools[id].icon ?? '✦';
+  cursor.replaceChildren();
+  if (tools[id].icon && id !== 'sponge') cursor.append(toolIcon(id));
+  if (!tools[id].icon) cursor.textContent = '✦';
   setCart(false);
   $('#cartToggle').focus({ preventScroll: true });
   react('smile');
@@ -139,7 +141,7 @@ function render() {
   // Allow a quick transition at the original mask threshold. The cart always stays available.
   const quickRinse = MASK_TOOLS.includes(selected) && applied >= 96;
   next.dataset.action = quickRinse ? 'rinse' : 'finish';
-  next.textContent = quickRinse ? 'Risciacqua' : 'Concludi ✨';
+  next.textContent = quickRinse ? 'Risciacqua' : 'Concludi ✦';
   next.disabled = Boolean(suggested) && !quickRinse;
   canvas.setAttribute('aria-description', 'Pulizia ' + Math.round(cleanliness * 100) +
     '%, luminosità ' + Math.round(glow * 100) + '%, idratazione ' + Math.round(hydration * 100) + '%.');
@@ -198,7 +200,7 @@ function advance() {
   stars += 3;
   try { localStorage.setItem('dsp-stars', String(stars)); } catch {}
   $('#stars').textContent = stars;
-  $('#totalStars').textContent = '⭐ ' + stars;
+  $('#totalStars').textContent = '★ ' + stars;
   setPortrait($('#done .portrait'), client.id);
   show('done');
   compare(false);
@@ -233,23 +235,19 @@ for (const id of SPA_TOOLS) {
   button.dataset.tool = id;
   button.className = 'spa-tool';
   button.setAttribute('aria-pressed', 'false');
-  const graphic = document.createElement(icon ? 'span' : 'img');
-  if (icon) {
-    graphic.className = 'icon';
-    graphic.setAttribute('aria-hidden', 'true');
-    graphic.textContent = icon;
-  } else {
+  const graphic = icon ? toolIcon(id) : document.createElement('img');
+  if (!icon) {
     graphic.src = 'assets/jar-' + id + '.svg';
     graphic.alt = '';
   }
   button.append(graphic, label);
-  button.onclick = () => selectTool(id);
+  bindAction(button, () => selectTool(id));
   cart.append(button);
 }
 
 for (const button of document.querySelectorAll('.client')) {
   const id = button.dataset.client;
-  button.onclick = () => start(id);
+  bindAction(button, () => start(id));
   loadStencil('assets/' + clients[id].stencil, width, height).then(stencil => {
     stencils.set(id, stencil);
     button.disabled = false;
@@ -276,35 +274,58 @@ for (const type of ['pointercancel', 'lostpointercapture']) {
   canvas.addEventListener(type, event => { if (event.pointerId === pointer) stopStroke(); });
 }
 
-$('#play').onclick = $('#again').onclick = () => show('choose');
-$('#chooseHome').onclick = $('#back').onclick = $('#goHome').onclick = () => {
+for (const selector of ['#play', '#again']) bindAction($(selector), () => show('choose'));
+function goHome() {
   stopStroke();
   cancelAnimationFrame(frame);
   frame = 0;
   setCart(false);
   show('home');
-};
-$('#cartToggle').onclick = () => setCart(cart.hidden);
-$('#before').onclick = () => compare(true);
-$('#after').onclick = () => compare(false);
-next.onclick = advance;
+}
+for (const selector of ['#chooseHome', '#back', '#goHome']) bindAction($(selector), goHome);
+bindAction($('#cartToggle'), () => setCart(cart.hidden));
+bindAction($('#before'), () => compare(true));
+bindAction($('#after'), () => compare(false));
+bindAction(next, advance);
 
-let touchPress;
-// Chromium can suppress a synthesized click immediately after a canvas drag.
-next.addEventListener('pointerdown', event => {
-  if (event.pointerType === 'touch' && event.isPrimary && !next.disabled) {
-    touchPress = { id: event.pointerId, x: event.clientX, y: event.clientY };
-  }
-});
-next.addEventListener('pointercancel', event => {
-  if (event.pointerId === touchPress?.id) touchPress = null;
-});
-next.addEventListener('pointerup', event => {
-  if (event.pointerId !== touchPress?.id) return;
-  const distance = Math.hypot(event.clientX - touchPress.x, event.clientY - touchPress.y);
-  touchPress = null;
-  if (distance <= 12 && next.contains(document.elementFromPoint(event.clientX, event.clientY))) advance();
-});
+function toolIcon(id) {
+  const namespace = 'http://www.w3.org/2000/svg';
+  const icon = document.createElementNS(namespace, 'svg');
+  icon.setAttribute('class', 'icon');
+  icon.setAttribute('viewBox', '0 0 32 32');
+  icon.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS(namespace, 'use');
+  use.setAttribute('href', 'assets/spa-tools.svg#' + id);
+  icon.append(use);
+  return icon;
+}
+
+// A canvas drag can suppress Chromium's synthesized click on the following tap.
+function bindAction(button, action) {
+  let touchPress;
+  let lastTap = -Infinity;
+  button.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'touch' && event.isPrimary && !button.disabled) {
+      touchPress = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    }
+  });
+  button.addEventListener('pointercancel', event => {
+    if (event.pointerId === touchPress?.id) touchPress = null;
+  });
+  button.addEventListener('pointerup', event => {
+    if (event.pointerId !== touchPress?.id) return;
+    const distance = Math.hypot(event.clientX - touchPress.x, event.clientY - touchPress.y);
+    touchPress = null;
+    if (distance > 12 || button.disabled || !button.contains(document.elementFromPoint(event.clientX, event.clientY))) return;
+    lastTap = performance.now();
+    action();
+  });
+  button.addEventListener('click', event => {
+    if (event.detail && (event.pointerType === 'touch' || event.sourceCapabilities?.firesTouchEvents) &&
+        performance.now() - lastTap < 650) return;
+    action();
+  });
+}
 
 document.addEventListener('visibilitychange', resetBlink);
 reducedMotion.addEventListener('change', resetBlink);

@@ -82,3 +82,5 @@ footer p { margin: 0 0 5px; }
 #done .award { bottom: 1%; line-height: 1; }
 #done .reward { border: 0; box-shadow: none; padding: 3px; margin: 2px 0; }
 #comparison { touch-action: auto; }
+.spa-tool { min-width: 0; font-size: .65rem; }
+#tool .icon { display: block; width: clamp(22px, 7vw, 37px); height: auto; }
