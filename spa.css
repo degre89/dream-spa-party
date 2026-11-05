@@ -50,20 +50,35 @@ footer p { margin: 0 0 5px; }
 .expression { object-fit: contain; opacity: 0; transition: opacity 100ms ease-in-out; }
 .blink .eyelids, .relax .eyelids, .smile .grin { opacity: 1; }
 .relax .eyelids, .grin { transition-duration: 170ms; }
-.selector { padding: 7px 8px 10px; }
-.jars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 9px; }
-.jar { color: #63244c; border: 2px solid transparent; border-radius: 16px; background: #f8e0f0; padding: 2px 0 5px; min-height: 62px; font-size: .72rem; }
-.jar img { display: block; width: min(100%, 69px); height: clamp(37px, 11dvh, 78px); margin: auto; object-fit: contain; }
-.jar[aria-pressed="true"] { border-color: #a82372; background: #fff9fc; box-shadow: inset 0 0 0 1px #fff; }
-.jar.pop img { animation: jar-pop .28s ease-out; }
-@keyframes jar-pop { 50% { transform: translateY(-5px) scale(1.08); } }
-#bubble { position: absolute; z-index: 1; margin: 0; top: 11%; right: 1%; padding: 7px 12px; border: 2px solid white; border-radius: 16px 16px 16px 3px; background: #fff1fa; box-shadow: 0 4px 12px #5b22594d; font-size: .83rem; }
-#bubble:not([hidden]) { animation: bubble-in .22s ease-out both; }
-@keyframes bubble-in { from { opacity: 0; transform: translateY(5px); } }
 #done .award { position: absolute; bottom: 4%; pointer-events: none; }
-#spa #fill { background: linear-gradient(90deg, var(--mask-dark), var(--mask-light)); }
-#character:not(.rinsing) .particle { color: var(--mask-light); }
 @media (prefers-reduced-motion: reduce) {
-  .jar.pop img, #bubble:not([hidden]) { animation: none; }
   .expression { transition: none; }
 }
+
+.clients { flex: 1; width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: center; gap: 8px; }
+.client { min-width: 0; overflow: hidden; padding: 4px 0 8px; border: 2px solid #fff; border-radius: 20px; background: linear-gradient(#eabde9, #fff3fa); color: #66244f; box-shadow: 0 4px 12px #5b22594d; }
+.client img { width: 100%; aspect-ratio: 4 / 5; object-fit: contain; display: block; margin-bottom: 3px; }
+.client:nth-child(2) { background: linear-gradient(#f3afd1, #fff3fa); }
+.client:nth-child(3) { background: linear-gradient(#d8c2fa, #f8f0ff); }
+#chooseStatus:empty { display: none; }
+.treatment-controls { position: relative; }
+.treatment-actions, .compare-controls { display: flex; justify-content: center; gap: 6px; }
+.treatment-actions button { flex: 1; min-width: 0; padding-inline: 6px; }
+#hint { min-height: 2.4em; line-height: 1.2; font-size: .85rem; }
+#cart { position: absolute; z-index: 2; inset: auto -2px calc(100% + 7px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; background: #fff1fa; border: 2px solid white; border-radius: 18px; padding: 7px; box-shadow: 0 5px 18px #5b225977; }
+#cart[hidden] { display: none; }
+.spa-tool { display: grid; justify-items: center; align-content: center; gap: 2px; color: #66244f; border: 2px solid transparent; border-radius: 13px; background: #f8e0f0; padding: 2px 0; min-height: 45px; font-size: .68rem; }
+.spa-tool img, .spa-tool .icon { display: block; width: 27px; height: 27px; object-fit: contain; font-size: 1.24rem; line-height: 27px; }
+.spa-tool[aria-pressed="true"], .compare-controls [aria-pressed="true"] { border-color: #a82372; background: #fff; }
+#tool.held { display: block; z-index: 1; }
+#character:not(.rinsing) #tool { width: auto; aspect-ratio: auto; padding: 3px; background: #fff8f3; font-size: clamp(1rem, 5vw, 1.65rem); }
+#character.rinsing #tool:not(.held) { display: none; }
+#spa #fill { background: linear-gradient(90deg, #a12875, #d35da1); }
+#character:not(.rinsing) .particle { color: #fff3fb; }
+.portrait[data-client]:not([data-client="sofia"]) .grin { display: none; }
+.portrait[data-client]:not([data-client="sofia"])::after { content: '✦'; position: absolute; top: 55%; right: 13%; color: #ffedb6; font-size: clamp(1rem, 5vw, 2rem); text-shadow: 0 1px 3px #9a5376; opacity: 0; transition: opacity .15s; }
+.portrait[data-client]:not([data-client="sofia"]).smile::after { opacity: 1; }
+#done { gap: 6px; }
+#done .award { bottom: 1%; line-height: 1; }
+#done .reward { border: 0; box-shadow: none; padding: 3px; margin: 2px 0; }
+#comparison { touch-action: auto; }
