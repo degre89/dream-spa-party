@@ -1,0 +1,34 @@
+name: Phase 03 browser checks
+on:
+  push:
+    branches: [development/phase03-complete-facial-spa]
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - name: Run Chromium through a local HTTP server
+        shell: bash
+        run: |
+          mkdir -p test-results
+          python3 -m http.server 8000 --bind 127.0.0.1 >test-results/http.log 2>&1 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          for attempt in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:8000/ -o /dev/null && break
+            sleep 1
+          done
+          node --test --test-reporter=tap phase03/facial-state.test.mjs phase03/browser.test.mjs | tee test-results/report.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dream-spa-phase03-chromium
+          path: test-results/
+          if-no-files-found: error
