@@ -1,0 +1,91 @@
+name: Phase 02 browser checks
+on:
+  push:
+    branches: [development/phase02-magic-masks]
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8000 &
+          node <<'JS'
+          const { chromium } = require('playwright');
+          const assert = require('node:assert/strict');
+          (async () => {
+            const browser = await chromium.launch();
+            try {
+              for (const [width,height,touch] of [[320,568,true],[412,915,true],[1280,720,false]]) {
+                const ctx = await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch});
+                const page = await ctx.newPage();
+                const cdp = await ctx.newCDPSession(page);
+                const errors = [];
+                page.on('pageerror', e => errors.push(e.message));
+                page.on('response', r => { if(r.status()>=400) errors.push(r.url()+' '+r.status()); });
+                await page.goto('http://localhost:8000/');
+                await page.locator('#play:enabled').waitFor();
+                await page.locator('#home .blink').waitFor({state:'attached',timeout:7000});
+                const activate = selector => touch ? page.locator(selector).tap() : page.locator(selector).click();
+                await activate('#play');
+                const color = [];
+                for (const id of ['strawberry','avocado','blueberry','honey']) {
+                  const jar = page.locator('[data-mask='+id+']');
+                  if (touch) await jar.tap(); else await jar.click();
+                  assert.equal(await jar.getAttribute('aria-pressed'),'true');
+                  assert(await page.locator('#bubble').isVisible());
+                  await page.screenshot({path:'choose-'+width+'.png'});
+                  await activate('#begin');
+                  const b=await page.locator('#mask').boundingBox();
+                  async function sweep(from,to) {
+                    for (let v=from;v<=to;v+=.026) {
+                      const y=Math.round(b.y+b.height*v), left=Math.round(b.x+b.width*.22), right=Math.round(b.x+b.width*.78);
+                      if(touch) {
+                        const dispatch=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points});
+                        await dispatch('touchStart',[{x:left,y}]);
+                        await dispatch('touchMove',[{x:right,y}]);
+                        await dispatch('touchEnd',[]);
+                      } else {
+                        await page.mouse.move(left,y);
+                        await page.mouse.down();
+                        await page.mouse.move(right,y);
+                        await page.mouse.up();
+                      }
+                    }
+                  }
+                  const pixels = coords => page.locator('#mask').evaluate((c, coords)=>coords.map(([x,y])=>Array.from(c.getContext('2d').getImageData(x,y,1,1).data)),coords);
+                  assert(await page.locator('#next').isDisabled());
+                  await sweep(.285,.70);
+                  await page.locator('#next:enabled').waitFor();
+                  const [forehead,...protectedPixels]=await pixels([[256,184],[194,294],[316,294],[257,387],[190,231],[257,90]]);
+                  assert(forehead[3]>0);
+                  assert(protectedPixels.every(p=>p[3]===0));
+                  color.push(forehead.slice(0,3).join(','));
+                  await page.screenshot({path:'apply-'+id+'-'+width+'.png'});
+                  await activate('#next');
+                  assert(await page.locator('#next').isDisabled());
+                  await sweep(.285,.70);
+                  await page.locator('#next:enabled').waitFor();
+                  assert.equal((await pixels([[256,184]]))[0][3],0);
+                  await activate('#next');
+                  assert(await page.locator('#done .smile').isVisible());
+                  await page.screenshot({path:'done-'+width+'.png'});
+                  await activate('#again');
+                }
+                assert.equal(new Set(color).size,4);
+                await page.reload();
+                assert.equal(await page.locator('#stars').innerText(),'12');
+                assert.deepEqual(errors,[]);
+                console.log('PASS '+width+'×'+height+' touch='+touch);
+                await ctx.close();
+              }
+            } finally { await browser.close(); }
+          })().catch(e=>{console.error(e);process.exitCode=1;});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase02-browser-screens
+          path: '*.png'
