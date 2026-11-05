@@ -49,7 +49,16 @@ jobs:
                 page.on('response', r => { if(r.status()>=400 && !r.url().endsWith('/favicon.ico')) errors.push(r.url()+' '+r.status()); });
                 await page.goto(process.env.LIVE === 'true' ? 'https://degre89.github.io/dream-spa-party/' : 'http://localhost:8000/');
                 await page.locator('#play:enabled').waitFor();
-                await page.locator('#home .blink').waitFor({state:'attached',timeout:7000});
+                const blink = await page.evaluate(() => new Promise(resolve => {
+                  const portrait = document.querySelector('#home .portrait');
+                  const observer = new MutationObserver(() => {
+                    if (portrait.classList.contains('blink')) { observer.disconnect(); clearTimeout(limit); resolve(true); }
+                  });
+                  const limit = setTimeout(() => { observer.disconnect(); resolve(document.visibilityState); }, 6500);
+                  observer.observe(portrait,{attributes:true,attributeFilter:['class']});
+                  if (portrait.classList.contains('blink')) { observer.disconnect(); clearTimeout(limit); resolve(true); }
+                }));
+                assert.equal(blink,true,'natural blink observed');
                 const activate = selector => touch ? page.locator(selector).tap() : page.locator(selector).click();
                 await activate('#play');
                 const color = [];
