@@ -7,7 +7,7 @@ const clamp = value => Math.max(0, Math.min(1, value));
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const maskTools = new Set(MASK_TOOLS);
 
-function seededRandom(seed) {
+export function seededRandom(seed) {
   let state = seed >>> 0;
   return () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
@@ -37,13 +37,14 @@ function makeCells(width, height, skinAt) {
   return cells;
 }
 
-function makeConditions(cells, skinAt, regions, random) {
+function makeConditions(cells, skinAt, regions, random, conditionKinds) {
   const conditions = [];
   for (const [kind, radius, count] of [
     ['redness', 15, 1 + Number(random() > 0.7)],
     ['spot', 7, 1 + Math.floor(random() * 3)],
     ['pores', 11, 1 + Number(random() > 0.5)]
   ]) {
+    if (conditionKinds && !conditionKinds.includes(kind)) continue;
     const candidates = cells.filter(point =>
       regions.some(region => distance(point, region) <= region.radius) &&
       validCenter(point, skinAt, radius)
@@ -61,10 +62,10 @@ function makeConditions(cells, skinAt, regions, random) {
   return conditions;
 }
 
-export function createSession({ width, height, skinAt, regions, seed }) {
+export function createSession({ width, height, skinAt, regions, seed, conditionKinds }) {
   const random = seededRandom(seed);
   const cells = makeCells(width, height, skinAt);
-  const conditions = makeConditions(cells, skinAt, regions, random);
+  const conditions = makeConditions(cells, skinAt, regions, random, conditionKinds);
   const dullness = 0.55 + random() * 0.4;
   return {
     cells, conditions, dullness, skinAt,
