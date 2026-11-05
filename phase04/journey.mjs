@@ -73,7 +73,7 @@ export function applyGesture(journey, tool, point) {
 }
 
 export function advanceJourney(journey) {
-  if (!journey.pending) return false;
+  if (!journey.pending || journey.session.completed) return false;
   if (journey.index === journey.sequence.length - 1) {
     journey.session.completed = true;
     return true;
