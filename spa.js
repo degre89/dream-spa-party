@@ -153,7 +153,7 @@ function render() {
   draw(journey.session, skin.stencil, false, client.id, creamTrace.map(point => ({
     ...point, alpha: 0.55 * (point.expires - now) / 680
   })));
-  if (creamTrace.length) frame = requestAnimationFrame(render);
+  if (creamTrace.length || journey.session.cells.some(cell => cell.creamUntil > now)) frame = requestAnimationFrame(render);
 
   const step = currentStep(journey);
   const action = currentAction(journey);
