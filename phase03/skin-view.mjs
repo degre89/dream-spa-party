@@ -83,12 +83,13 @@ export function createSkinView(canvas) {
     view.clearRect(0, 0, width, height);
     if (!before) {
       small.clearRect(0, 0, grid.width, grid.height);
-      for (const { x, y, product, clean, glow, hydration } of session.cells) {
+      for (const { x, y, product, clean, glow, hydration, creamUntil = 0 } of session.cells) {
         const material = materials[product];
         const light = Math.max(glow, hydration * 0.7, clean * 0.4);
+        const creamAlpha = Math.max(0, Math.min(1, (creamUntil - performance.now()) / 1500));
         if (!material && !light) continue;
-        small.fillStyle = material?.[0] ?? '#fff0d8';
-        small.globalAlpha = material?.[1] ?? light * 0.19;
+        small.fillStyle = creamAlpha > 0 ? '#fff8e8' : material?.[0] ?? '#fff0d8';
+        small.globalAlpha = creamAlpha > 0 ? creamAlpha * .68 : material?.[1] ?? light * 0.19;
         small.fillRect(Math.floor(x / 8), Math.floor(y / 8), 1, 1);
       }
       view.imageSmoothingEnabled = true;
