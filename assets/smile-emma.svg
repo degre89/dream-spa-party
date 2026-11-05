@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 640">
+  <defs><linearGradient id="lip" x2="0" y2="1"><stop stop-color="#8e4437"/><stop offset="1" stop-color="#cb6f60"/></linearGradient></defs>
+  <g transform="translate(254 391) scale(1.02 1)">
+    <path d="M-50 -9 Q-30 3 0 -1 Q31 2 50 -9 Q27 17 0 18 Q-27 18 -50 -9Z" fill="url(#lip)"/>
+    <path d="M-43 -5 Q0 8 43 -5 Q23 13 0 13 Q-25 13 -43 -5Z" fill="#8e4437"/>
+    <path d="M-39 -3 Q0 7 39 -3 Q24 7 0 8 Q-24 7 -39 -3Z" fill="#fff3e8"/>
+  </g>
+</svg>
