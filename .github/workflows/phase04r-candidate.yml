@@ -18,7 +18,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-save --no-package-lock playwright@1.56.1
-      - run: npx playwright install --with-deps chrome
+      - name: Verify preinstalled Chrome (same approach as Phase 04 live)
+        run: google-chrome --version
       - name: Serve branch locally without publishing
         run: |
           python3 -m http.server 8000 > server.log 2>&1 &
