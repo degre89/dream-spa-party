@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 640">
   <path d="M147 232 Q175 216 207 231 M306 232 Q332 211 356 221" fill="none" stroke="#98513c" stroke-width="3.5" opacity=".58" stroke-linecap="round"/>
-  <path transform="translate(256 385) scale(0.96 1)" d="M-47 -5 Q-25 2 -4 0 Q22 -3 45 -7 Q21 6 2 7 Q-22 9 -47 -5Z" fill="#dc7774" opacity=".86"/>
-  <path transform="translate(256 385) scale(0.96 1)" d="M-43 -4 Q-23 4 -2 3 Q23 1 42 -6" fill="none" stroke="#913e48" stroke-width="2.1" stroke-linecap="round"/>
+  <!-- Downturned mouth with visibly lowered corners; brows reinforce disappointment. -->
+  <path d="M212 398 Q256 366 300 398" fill="none" stroke="#913e48" stroke-width="7" stroke-linecap="round"/>
+  <path d="M217 396 Q256 374 295 396" fill="none" stroke="#f6b1a3" stroke-width="3" opacity=".8"/>
 </svg>
