@@ -41,3 +41,29 @@ footer p { margin: 0 0 5px; }
 .hero { mask-image: linear-gradient(#000 92%, transparent); }
 .rinsing #tool { display: block; left: 87%; top: 76%; }
 .rinsing .particle::before { content: ""; position: absolute; z-index: -1; width: 23px; height: 15px; left: 2px; top: 10px; border-radius: 50%; background: #fff9; box-shadow: -8px 2px 0 -3px #fffd, 9px -2px 0 -4px #fffe; }
+
+/* All facial layers use the same image box. The treatment canvas stays above them. */
+.stage { position: relative; }
+.portrait { position: relative; width: min(100cqw, 80cqh); aspect-ratio: 4 / 5; pointer-events: none; }
+.portrait .hero, .expression { position: absolute; inset: 0; width: 100%; height: 100%; }
+#character .portrait { width: 100%; height: 100%; }
+.expression { object-fit: contain; opacity: 0; transition: opacity 100ms ease-in-out; }
+.blink .eyelids, .relax .eyelids, .smile .grin { opacity: 1; }
+.relax .eyelids, .grin { transition-duration: 170ms; }
+.selector { padding: 7px 8px 10px; }
+.jars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 9px; }
+.jar { color: #63244c; border: 2px solid transparent; border-radius: 16px; background: #f8e0f0; padding: 2px 0 5px; min-height: 62px; font-size: .72rem; }
+.jar img { display: block; width: min(100%, 69px); height: clamp(37px, 11dvh, 78px); margin: auto; object-fit: contain; }
+.jar[aria-pressed="true"] { border-color: #a82372; background: #fff9fc; box-shadow: inset 0 0 0 1px #fff; }
+.jar.pop img { animation: jar-pop .28s ease-out; }
+@keyframes jar-pop { 50% { transform: translateY(-5px) scale(1.08); } }
+#bubble { position: absolute; z-index: 1; margin: 0; top: 11%; right: 1%; padding: 7px 12px; border: 2px solid white; border-radius: 16px 16px 16px 3px; background: #fff1fa; box-shadow: 0 4px 12px #5b22594d; font-size: .83rem; }
+#bubble:not([hidden]) { animation: bubble-in .22s ease-out both; }
+@keyframes bubble-in { from { opacity: 0; transform: translateY(5px); } }
+#done .award { position: absolute; bottom: 4%; pointer-events: none; }
+#spa #fill { background: linear-gradient(90deg, var(--mask-dark), var(--mask-light)); }
+#character:not(.rinsing) .particle { color: var(--mask-light); }
+@media (prefers-reduced-motion: reduce) {
+  .jar.pop img, #bubble:not([hidden]) { animation: none; }
+  .expression { transition: none; }
+}
