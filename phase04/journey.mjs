@@ -64,7 +64,10 @@ function spatialCoverage(session, kind) {
   const minimum = Math.min(...[...regions.values()].filter(r => r.total >= 8)
     .map(r => r.covered / r.total));
   // 88% total, with at least 55% of each reachable macrozone.
-  return Math.min(overall / .88, minimum / .55);
+  // Show immediate local feedback, but never award completion until the
+  // whole face and every reachable macrozone have received treatment.
+  if (overall >= .88 && minimum >= .55) return 1;
+  return Math.min(.99, .7 * Math.min(1, overall / .88) + .3 * Math.min(1, minimum / .55));
 }
 
 function progress(journey, skin) {
