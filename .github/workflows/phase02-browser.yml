@@ -1,11 +1,12 @@
 name: Phase 02 browser checks
 on:
-  push:
-    branches: [development/phase02-magic-masks]
+  pull_request:
+    branches: [main]
 permissions:
   contents: read
 jobs:
   chromium:
+    if: github.head_ref == 'development/phase02-magic-masks'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,6 +73,10 @@ jobs:
                   await activate('#next');
                   assert(await page.locator('#done .smile').isVisible());
                   await page.screenshot({path:'done-'+width+'.png'});
+                  if(width===320&&id==='honey') {
+                    const shot = await page.screenshot({type:'jpeg',quality:28});
+                    console.log('VISUAL_JPEG '+shot.toString('base64'));
+                  }
                   await activate('#again');
                 }
                 assert.equal(new Set(color).size,4);
