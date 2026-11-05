@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 950">
+  <defs>
+    <linearGradient id="lip" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e67d73"/><stop offset="1" stop-color="#ce565f"/></linearGradient>
+    <linearGradient id="teeth" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff9ed"/><stop offset="1" stop-color="#f8d9cd"/></linearGradient>
+  </defs>
+  <path d="M310 554Q346 569 380 559Q414 569 450 554Q423 595 380 595Q337 595 310 554Z" fill="url(#lip)"/>
+  <path d="M316 558Q379 576 444 558Q419 586 380 588Q341 586 316 558Z" fill="#7d3137"/>
+  <path d="M320 560Q380 575 440 560Q430 572 415 575Q380 583 346 575Q331 572 320 560Z" fill="url(#teeth)"/>
+  <path d="M359 588Q380 585 401 588Q382 595 359 588" fill="#ed8e86"/>
+</svg>
