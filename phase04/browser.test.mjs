@@ -225,11 +225,13 @@ for (const [width, height, touch] of devices) {
           await pick(step === 'mask' ? mask : correctTools[step]);
           if (step === 'cream') {
             for (let repeat = 0; repeat < 12; repeat++) await stroke([[155, 345], [192, 345], [155, 345]]);
-            assert.ok(await percent() < 100, 'one cheek cannot complete cream');
+            const cheekPercent = await percent();
+            assert.ok(cheekPercent > 0 && cheekPercent < 100, `one cheek must progress without completing: ${cheekPercent}%`);
             await shot('08-crema-una-guancia-' + id);
             await stroke([[218, profile.forehead[1]], [278, profile.forehead[1]]]);
             await waitForFrame();
-            assert.ok(await percent() > 0 && await percent() < 100);
+            const creamPercent = await percent();
+            assert.ok(creamPercent > 0 && creamPercent < 100, `cream after cheek and forehead: ${creamPercent}%`);
             assert.notEqual(await canvasPNG('#mask'), initial, 'cream leaves a visible trace');
             if (index === 0) await shot('08-crema-in-assorbimento');
             await gestureUntil(async () => (await percent()) === 100, 5);
