@@ -39,23 +39,35 @@ function makeCells(width, height, skinAt) {
 
 function makeConditions(cells, skinAt, regions, random, conditionKinds) {
   const conditions = [];
-  for (const [kind, radius, count] of [
-    ['redness', 15, 1 + Number(random() > 0.7)],
-    ['spot', 7, 1 + Math.floor(random() * 3)],
-    ['pores', 11, 1 + Number(random() > 0.5)]
-  ]) {
+  const profiles = conditionKinds ? [
+    ['redness', 25, 2 + Math.floor(random() * 2), 14, 8],
+    ['spot', 10, 5 + Math.floor(random() * 7), 11, 7],
+    ['pores', 15, 2 + Math.floor(random() * 3), 14, 4]
+  ] : [
+    ['redness', 15, 1 + Number(random() > 0.7), 15, 0],
+    ['spot', 7, 1 + Math.floor(random() * 3), 7, 0],
+    ['pores', 11, 1 + Number(random() > 0.5), 11, 0]
+  ];
+  for (const [kind, maxRadius, count, margin, variation] of profiles) {
     if (conditionKinds && !conditionKinds.includes(kind)) continue;
     const candidates = cells.filter(point =>
       regions.some(region => distance(point, region) <= region.radius) &&
-      validCenter(point, skinAt, radius)
+      validCenter(point, skinAt, margin)
     );
     for (let index = 0; index < count; index++) {
-      const available = candidates.filter(point =>
+      const radius = variation ? maxRadius - random() * variation : maxRadius;
+      let available = candidates.filter(point =>
         conditions.every(other => distance(point, other) >= radius + other.radius + 5)
       );
       if (!available.length) break;
+      // Prefer a patch on each cheek before scattering a third one.
+      if (conditionKinds && kind === 'redness' && index < 2) {
+        const cheek = regions[index + 1];
+        const onCheek = available.filter(point => distance(point, cheek) <= cheek.radius);
+        if (onCheek.length) available = onCheek;
+      }
       const { x, y } = available[Math.floor(random() * available.length)];
-      const initial = 0.65 + random() * 0.35;
+      const initial = conditionKinds ? 0.85 + random() * 0.15 : 0.65 + random() * 0.35;
       conditions.push({ kind, x, y, radius, initial, intensity: initial });
     }
   }
