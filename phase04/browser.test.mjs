@@ -188,6 +188,7 @@ for (const [width, height, touch] of devices) {
         await element('#spa .portrait.puzzled').waitFor();
         assert.ok(await element('#spa .puzzled-face').evaluate(async image => { await image.decode(); return image.naturalWidth > 0; }));
         await shot('05-reazione-perplessa-' + id);
+        assert.equal(await element('#spa .puzzled-face').evaluate(el => getComputedStyle(el).opacity), '1');
         for (let attempt = 0; attempt < 8; attempt++) await stroke([[mark.x, mark.y], [mark.x + 10, mark.y]]);
         assert.equal(await canvasPNG('#mask'), initial, 'wrong tool never changes the visible skin');
         assert.equal(await percent(), 0, 'repeated wrong gestures never complete a stage');
@@ -201,6 +202,7 @@ for (const [width, height, touch] of devices) {
         assert.ok(await element('#spa .grin').evaluate(async image => { await image.decode(); return image.naturalWidth > 0; }));
         assert.equal(await percent(), 0, 'choosing the right product does not advance');
         await shot('06-sorriso-' + id);
+        assert.equal(await element('#spa .grin').evaluate(el => getComputedStyle(el).opacity), '1');
 
         await stroke([[mark.x, mark.y], [mark.x + 7, mark.y]]);
         await waitForFrame();
@@ -222,12 +224,15 @@ for (const [width, height, touch] of devices) {
           const mask = masks[(index + devices.findIndex(device => device[0] === width)) % masks.length];
           await pick(step === 'mask' ? mask : correctTools[step]);
           if (step === 'cream') {
+            for (let repeat = 0; repeat < 12; repeat++) await stroke([[155, 345], [192, 345], [155, 345]]);
+            assert.ok(await percent() < 100, 'one cheek cannot complete cream');
+            await shot('08-crema-una-guancia-' + id);
             await stroke([[218, profile.forehead[1]], [278, profile.forehead[1]]]);
             await waitForFrame();
             assert.ok(await percent() > 0 && await percent() < 100);
             assert.notEqual(await canvasPNG('#mask'), initial, 'cream leaves a visible trace');
             if (index === 0) await shot('08-crema-in-assorbimento');
-            await gestureUntil(async () => (await percent()) === 100);
+            await gestureUntil(async () => (await percent()) === 100, 5);
           } else {
             await gestureUntil(() => element('#next').isVisible());
             const [forehead, ...protectedPixels] = await pixels([profile.forehead, ...profile.protected]);
