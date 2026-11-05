@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1122 1402">
+  <defs><linearGradient id="lid" x2="0" y2="1"><stop stop-color="#cf8a72"/><stop offset=".64" stop-color="#e9a38a"/><stop offset="1" stop-color="#b76654"/></linearGradient></defs>
+  <path fill="url(#lid)" d="M323 614 C357 565 439 567 475 613 Q492 639 496 680 Q419 698 353 667 Q330 647 323 614Z M625 680 Q628 642 646 613 C683 567 757 565 793 614 Q784 647 764 667 Q697 698 625 680Z"/>
+  <path d="M330 621 Q383 695 492 677 M629 677 Q733 694 788 621" fill="none" stroke="#543124" stroke-width="7" stroke-linecap="round"/>
+</svg>
