@@ -11,10 +11,151 @@ let pointer = null;
 let last = null;
 let frame = 0;
 let lastEffect = 0;
+const masks = {
+  "strawberry": {
+    "label": "Fragola",
+    "dark": "#b71956",
+    "tint": "#ff87b8",
+    "rgb": [
+      232,
+      88,
+      146
+    ],
+    "line": "Mmm, fragola!",
+    "pattern": "berry"
+  },
+  "avocado": {
+    "label": "Avocado",
+    "dark": "#357047",
+    "tint": "#93c873",
+    "rgb": [
+      105,
+      193,
+      111
+    ],
+    "line": "Che freschezza!",
+    "pattern": "soft"
+  },
+  "blueberry": {
+    "label": "Mirtillo",
+    "dark": "#6748a2",
+    "tint": "#a687ec",
+    "rgb": [
+      158,
+      113,
+      219
+    ],
+    "line": "Che profumino!",
+    "pattern": "glow"
+  },
+  "honey": {
+    "label": "Miele",
+    "dark": "#a36017",
+    "tint": "#ffbd4f",
+    "rgb": [
+      219,
+      148,
+      55
+    ],
+    "line": "Dolcissimo!",
+    "pattern": "silk"
+  }
+};
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const jarButtons = [...document.querySelectorAll('.jar')];
+let chosen;
+let portrait;
+let blinkTimer, openTimer, reactionTimer, bubbleTimer;
+let nextReaction = 0;
 
-const show = id => document.querySelectorAll('.screen').forEach(screen => {
-  screen.classList.toggle('on', screen.id === id);
+function scheduleBlink() {
+  if (reducedMotion.matches || document.hidden) return;
+  blinkTimer = setTimeout(() => {
+    if (!portrait.classList.contains('relax')) {
+      portrait.classList.add('blink');
+      openTimer = setTimeout(() => portrait.classList.remove('blink'), 135);
+    }
+    scheduleBlink();
+  }, 2800 + Math.random() * 2900);
+}
+
+function switchPortrait(screen) {
+  clearTimeout(blinkTimer);
+  clearTimeout(openTimer);
+  clearTimeout(reactionTimer);
+  clearTimeout(bubbleTimer);
+  portrait?.classList.remove('blink', 'relax', 'smile');
+  $('#bubble').hidden = true;
+  portrait = screen.querySelector('.portrait');
+  nextReaction = 0;
+  if (screen.id === 'done') portrait.classList.add('smile');
+  scheduleBlink();
+}
+
+document.addEventListener('visibilitychange', () => {
+  clearTimeout(blinkTimer);
+  clearTimeout(openTimer);
+  portrait?.classList.remove('blink');
+  scheduleBlink();
 });
+reducedMotion.addEventListener('change', () => {
+  clearTimeout(blinkTimer);
+  clearTimeout(openTimer);
+  portrait?.classList.remove('blink');
+  scheduleBlink();
+});
+
+function react(expression, duration) {
+  clearTimeout(reactionTimer);
+  portrait.classList.remove('relax', 'smile');
+  portrait.classList.add(expression);
+  reactionTimer = setTimeout(() => portrait.classList.remove(expression), duration);
+}
+
+function chooseMask() {
+  chosen = undefined;
+  $('#begin').disabled = true;
+  for (const jar of jarButtons) {
+    jar.setAttribute('aria-pressed', 'false');
+    jar.classList.remove('pop');
+  }
+  show('choose');
+}
+
+for (const jar of jarButtons) {
+  jar.addEventListener('click', () => {
+    chosen = masks[jar.dataset.mask];
+    for (const button of jarButtons) {
+      button.setAttribute('aria-pressed', String(button === jar));
+      button.classList.remove('pop');
+    }
+    jar.classList.add('pop');
+    $('#begin').disabled = false;
+    react('smile', 1350);
+    const bubble = $('#bubble');
+    bubble.textContent = chosen.line;
+    bubble.hidden = false;
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => { bubble.hidden = true; }, 1750);
+  });
+}
+
+function materialTexture(col, row) {
+  const fleck = ((Math.imul(col, 73856093) ^ Math.imul(row, 19349663)) >>> 0) % 127;
+  switch (chosen.pattern) {
+    case 'berry': return fleck < 4 ? 24 : 7 * Math.sin((row + col * 0.3) / 18);
+    case 'soft': return 7 * Math.sin(row / 28) + 5 * Math.cos(col / 33);
+    case 'glow': return fleck < 6 ? 22 : 8 * Math.cos(row / 24 + col / 31);
+    case 'silk': return 30 * Math.max(0, Math.cos((row + col * 0.7) / 19)) ** 6 - 4;
+  }
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(screen => {
+    screen.classList.toggle('on', screen.id === id);
+  });
+  switchPortrait(document.getElementById(id));
+}
 
 stencil.onload = () => {
   context.drawImage(stencil, 0, 0, width, height);
@@ -40,11 +181,16 @@ function render() {
 }
 
 function start() {
+  if (!chosen || !area) return;
+  cancelAnimationFrame(frame);
+  const spa = $('#spa');
+  spa.style.setProperty('--mask-dark', chosen.dark);
+  spa.style.setProperty('--mask-light', chosen.tint);
   rinsing = false;
   remaining = 0;
   coverage.fill(0);
   overlay.data.fill(0);
-  $('#step').textContent = '1 / 2 · Maschera';
+  $('#step').textContent = '1 / 2 · ' + chosen.label;
   $('#hint').textContent = 'Stendi la maschera sulla pelle!';
   $('#next').textContent = 'Risciacqua';
   $('#character').classList.remove('rinsing');
@@ -63,10 +209,15 @@ function dab(x, y, radius) {
       if (!alpha || coverage[index] === Number(!rinsing)) continue;
       coverage[index] = Number(!rinsing);
       remaining += rinsing ? -alpha : alpha;
-      overlay.data[offset] = 104;
-      overlay.data[offset + 1] = 211 + Math.round(12 * Math.sin(row / 29));
-      overlay.data[offset + 2] = 100;
-      overlay.data[offset + 3] = rinsing ? 0 : Math.round(alpha * 0.83);
+      if (rinsing) {
+        overlay.data[offset + 3] = 0;
+      } else {
+        const shade = materialTexture(col, row);
+        overlay.data[offset] = chosen.rgb[0] + shade;
+        overlay.data[offset + 1] = chosen.rgb[1] + shade;
+        overlay.data[offset + 2] = chosen.rgb[2] + shade;
+        overlay.data[offset + 3] = Math.round(alpha * 0.83);
+      }
       changed = true;
     }
   }
@@ -90,8 +241,13 @@ function move(event) {
   }
   last = { x, y };
   if (changed && !frame) frame = requestAnimationFrame(render);
-  if (changed && performance.now() - lastEffect > 75) {
-    lastEffect = performance.now();
+  const now = performance.now();
+  if (changed && now >= nextReaction) {
+    react(rinsing ? 'smile' : 'relax', rinsing ? 850 : 670);
+    nextReaction = now + (rinsing ? 2300 : 3500);
+  }
+  if (changed && now - lastEffect > 75) {
+    lastEffect = now;
     const particle = document.createElement('span');
     particle.className = 'particle';
     particle.textContent = rinsing ? '○ ✦ °' : '✧';
@@ -121,9 +277,16 @@ for (const name of ['pointercancel', 'lostpointercapture']) canvas.addEventListe
 let stars = 0;
 try { stars = Number(localStorage.getItem('dsp-stars')) || 0; } catch {}
 $('#stars').textContent = stars;
-$('#play').onclick = start;
-$('#again').onclick = start;
-$('#back').onclick = $('#goHome').onclick = () => show('home');
+$('#play').onclick = $('#again').onclick = chooseMask;
+$('#begin').onclick = start;
+$('#chooseHome').onclick = $('#back').onclick = $('#goHome').onclick = () => {
+  if (pointer !== null) {
+    if (canvas.hasPointerCapture(pointer)) canvas.releasePointerCapture(pointer);
+    release({ pointerId: pointer });
+  }
+  show('home');
+};
+switchPortrait($('#home'));
 $('#next').onclick = () => {
   if (!$('#spa').classList.contains('on')) return;
   if (rinsing) {
@@ -135,6 +298,13 @@ $('#next').onclick = () => {
     return;
   }
   if (remaining / area < 0.96) return;
+  if (pointer !== null) {
+    if (canvas.hasPointerCapture(pointer)) canvas.releasePointerCapture(pointer);
+    release({ pointerId: pointer });
+  }
+  clearTimeout(reactionTimer);
+  portrait.classList.remove('relax');
+  nextReaction = 0;
   rinsing = true;
   rinseArea = remaining;
   $('#character').classList.add('rinsing');
