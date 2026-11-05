@@ -68,7 +68,7 @@ jobs:
                   assert.equal(await jar.getAttribute('aria-pressed'),'true');
                   assert(await page.locator('#bubble').isVisible());
                   await page.screenshot({path:'choose-'+width+'.png'});
-                  if(width===320&&id==='honey') console.log('CHOOSE_JPEG '+(await page.screenshot({type:'jpeg',quality:24})).toString('base64'));
+                  if(width===320&&id==='strawberry') console.log('CHOOSE_JPEG '+(await page.screenshot({type:'jpeg',quality:24})).toString('base64'));
                   await activate('#begin');
                   const b=await page.locator('#mask').boundingBox();
                   async function sweep(from,to) {
@@ -91,7 +91,7 @@ jobs:
                   assert(await page.locator('#next').isDisabled());
                   await sweep(.34,.34);
                   assert(await page.locator('#spa .relax').isVisible());
-                  if(width===320&&id==='honey') {
+                  if(width===320&&id==='strawberry') {
                     await page.waitForTimeout(220);
                     console.log('RELAX_JPEG '+(await page.screenshot({type:'jpeg',quality:24})).toString('base64'));
                   }
@@ -103,16 +103,17 @@ jobs:
                   color.push(forehead.slice(0,3).join(','));
                   await page.screenshot({path:'apply-'+id+'-'+width+'.png'});
                   await activate('#next');
-                  assert(await page.locator('#next').isDisabled());
+                  await page.locator('#character.rinsing').waitFor({timeout:3000});
+                  await page.locator('#next:disabled').waitFor({timeout:3000});
                   await sweep(.34,.34);
                   assert(await page.locator('#spa .smile').isVisible());
                   await sweep(.285,.70);
                   await page.locator('#next:enabled').waitFor();
                   assert.equal((await pixels([[256,184]]))[0][3],0);
                   await activate('#next');
-                  assert(await page.locator('#done .smile').isVisible());
+                  await page.locator('#done .smile').waitFor({timeout:3000});
                   await page.screenshot({path:'done-'+width+'.png'});
-                  if(width===320&&id==='honey') {
+                  if(width===320&&id==='strawberry') {
                     const shot = await page.screenshot({type:'jpeg',quality:28});
                     console.log('VISUAL_JPEG '+shot.toString('base64'));
                   }
