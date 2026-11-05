@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 950">
+  <defs>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#f8ae83"/><stop offset=".43" stop-color="#ee976f"/><stop offset=".77" stop-color="#f6ad85"/><stop offset="1" stop-color="#ffbd95"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-25%" width="140%" height="150%"><feGaussianBlur stdDeviation="5"/></filter>
+    <path id="patch" d="M195 416 Q203 395 230 387 Q264 369 301 392 Q323 407 340 442 L341 472 Q321 485 280 486 Q227 491 206 469 Q195 450 195 416Z"/>
+    <mask id="edges" maskUnits="userSpaceOnUse" x="176" y="362" width="180" height="144"><use href="#patch" fill="white" filter="url(#soft)"/></mask>
+    <g id="lid">
+      <rect x="179" y="366" width="174" height="135" fill="url(#skin)" mask="url(#edges)"/>
+      <path d="M218 437 Q259 467 323 441" fill="none" stroke="#bd694b" stroke-width="3" opacity=".48" stroke-linecap="round"/>
+      <path d="M209 440 C233 470 282 475 327 445 C292 481 231 479 209 440Z" fill="#542b24"/>
+      <path d="M217 450q-10 0-14-11m23 19q-9 1-14-6" fill="none" stroke="#542b24" stroke-width="2.4" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <use href="#lid"/><use href="#lid" transform="translate(760 0) scale(-1 1)"/>
+</svg>
