@@ -125,11 +125,11 @@ function selectTool(id) {
   $('#cartToggle').focus({ preventScroll: true });
   if (!journey.pending) {
     if (acceptsTool(journey, id)) {
-      react('smile', 'Proviamo sul viso!');
+      react('smile', 'Proviamo sul viso!', 1800);
     } else {
       journey.mistakes++;
       const message = journey.mistakes === 1 ? 'Mmm… proviamo qualcos’altro?' : help();
-      react('puzzled', message);
+      react('puzzled', message, 2000);
     }
   }
   render();
@@ -205,7 +205,7 @@ function move(event) {
     sparkle(x, y, '✧ ✦', true);
     if (result === 'complete') transitionTimer = setTimeout(nextStep, 780);
   } else if (now >= nextReaction) {
-    react('smile', 'Che sollievo!');
+    react('smile', 'Che sollievo!', 1800);
     portrait.classList.add('relax');
     nextReaction = now + 2300;
   }
