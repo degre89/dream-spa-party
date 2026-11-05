@@ -1,0 +1,65 @@
+name: Phase 03 live Pages checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - spa.js
+      - spa.css
+      - 'assets/**'
+      - 'phase03/**'
+      - '.github/workflows/phase03-live.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SPA_URL: https://degre89.github.io/dream-spa-party/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - name: Wait for the release and verify the public files
+        shell: bash
+        run: |
+          mkdir -p test-results
+          response=$(mktemp)
+          trap 'rm -f "$response"' EXIT
+          ready=false
+          for attempt in $(seq 1 48); do
+            if curl -fsSL --max-time 10 "${SPA_URL}?release=$GITHUB_SHA" -o "$response" &&
+               cmp -s index.html "$response" &&
+               curl -fsSL --max-time 10 "$SPA_URL" -o "$response" &&
+               cmp -s index.html "$response"; then
+              ready=true
+              break
+            fi
+            sleep 5
+          done
+          if [ "$ready" != true ]; then
+            echo 'Pages is not serving the expected release.'
+            exit 1
+          fi
+          echo 'Verified index.html' | tee test-results/live-assets.log
+          for file in 'spa.js?v=3' 'spa.css?v=3' phase03/{clients,facial-state,skin-view}.mjs assets/*; do
+            curl -fsSL --retry 2 --max-time 15 "${SPA_URL}$file" -o "$response"
+            cmp "${file%%\?*}" "$response"
+            echo "Verified $file" | tee -a test-results/live-assets.log
+          done
+      - name: Play nine sessions on the official site
+        shell: bash
+        run: node --test --test-reporter=tap phase03/browser.test.mjs | tee test-results/report.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dream-spa-phase03-live
+          path: test-results/
+          if-no-files-found: warn
