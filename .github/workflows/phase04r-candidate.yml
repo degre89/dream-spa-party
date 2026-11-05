@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir -p test-results
           set -o pipefail
-          node --test --test-reporter=tap phase04/browser.test.mjs | tee test-results/report.tap
+          node --test --test-reporter=tap phase04/browser.test.mjs 2>&1 | tee test-results/report.tap
       - uses: actions/upload-artifact@v4
         if: always()
         with:
