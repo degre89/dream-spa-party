@@ -1,12 +1,7 @@
-// Anchors sit below the eye cut-outs in the individual 512 × 640 stencils.
-const anchors = {
-  sofia: [[181, 344], [331, 344]],
-  emma: [[184, 330], [326, 330]],
-  maya: [[184, 345], [330, 345]]
-};
+import { clients } from '../phase03/clients.mjs?v=06a';
 
 export function eyeShadows(client) {
-  return anchors[client].map(([x, y], index) => ({
+  return clients[client].patchAnchors.map(([x, y], index) => ({
     kind: 'darkCircles', x, y, side: index ? -1 : 1, initial: 1, intensity: 1, patch: 'empty'
   }));
 }
@@ -55,7 +50,7 @@ export function drawEyeShadow(view, { x, y, side, intensity }, client) {
   view.translate(x, y - 5);
   view.rotate(.11 * side);
   view.scale(side, .27);
-  const tone = client === 'maya' ? '76,28,65' : '115,53,112';
+  const tone = clients[client].shadowTone ?? '115,53,112';
   const shade = view.createRadialGradient(0, 0, 2, 0, 0, 35);
   shade.addColorStop(0, `rgba(${tone},.51)`);
   shade.addColorStop(.58, `rgba(${tone},.32)`);

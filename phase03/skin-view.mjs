@@ -1,4 +1,5 @@
-import { drawEyePatches, drawEyeShadow } from '../phase05/eye-patches.mjs?v=05';
+import { clients } from './clients.mjs?v=06a';
+import { drawEyePatches, drawEyeShadow } from '../phase05/eye-patches.mjs?v=06a';
 
 // Paint the state model's cells, then clip every layer with the client's stencil.
 const materials = {
@@ -55,12 +56,6 @@ function halo(context, x, y, radius, color, edge) {
   context.fillStyle = gradient;
   context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
-
-const skinPalettes = {
-  sofia: { redness: [225, 64, 100], pores: '#8f3855' },
-  emma: { redness: [208, 54, 91], pores: '#81344f' },
-  maya: { redness: [236, 92, 122], pores: '#56212e' }
-};
 
 function conditionMark(context, { kind, x, y, radius, initial, intensity }, palette) {
   const remaining = intensity / initial;
@@ -134,7 +129,7 @@ export function createSkinView(canvas) {
       const intensity = before ? condition.initial : condition.intensity * (preparation === null ? 1 : .09 + .91 * preparation);
       if (intensity <= 0) continue;
       if (condition.kind === 'darkCircles') drawEyeShadow(view, { ...condition, intensity }, client);
-      else conditionMark(view, { ...condition, intensity }, skinPalettes[client]);
+      else conditionMark(view, { ...condition, intensity }, clients[client].palette);
     }
     if (!before) {
       for (const { x, y, product } of session.cells) {

@@ -1,5 +1,6 @@
+import { clients } from '../phase03/clients.mjs?v=06a';
 import { createSession, endStroke, MASK_TOOLS, readSkin, seededRandom, treat } from '../phase03/facial-state.mjs?v=04e';
-import { eyeShadows, patchProgress, usePatch } from '../phase05/eye-patches.mjs?v=05';
+import { eyeShadows, patchProgress, usePatch } from '../phase05/eye-patches.mjs?v=06a';
 import { prepareSkin } from '../phase05/steam.mjs?v=05';
 
 const steps = {
@@ -14,17 +15,13 @@ const steps = {
   rinse: { tool: 'sponge', icon: '○', prompt: 'Via tutto con la spugnetta!', hint: 'Cerca la spugnetta gialla.' }
 };
 
-const openings = {
-  sofia: ['spot', 'pores', 'redness'],
-  emma: ['redness', 'spot', 'pores'],
-  maya: ['pores', 'redness', 'spot']
-};
 const preparations = [['cream'], ['cleanse'], ['cleanse', 'cream']];
 
 export function createJourney({ client, seed, ...skin }) {
   const random = seededRandom(seed);
-  const first = Math.floor(random() * openings[client].length);
-  const opening = (seed >>> 0) % 4 === 0 ? 'darkCircles' : openings[client][first];
+  const openings = clients[client].openings;
+  const first = Math.floor(random() * openings.length);
+  const opening = (seed >>> 0) % 4 === 0 ? 'darkCircles' : openings[first];
   const sequence = ['steam', opening, ...preparations[Math.floor(random() * preparations.length)], 'mask'];
   const session = createSession({ ...skin, seed, conditionKinds: [opening] });
   if (opening === 'darkCircles') session.conditions = eyeShadows(client);

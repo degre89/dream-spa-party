@@ -1,19 +1,11 @@
-// Landmarks use the same 512 × 640 coordinates as the treatment stencil.
-// Each tuple is [centerX, centerY, halfWidth, halfHeight].
-const landmarks = {
-  sofia: { mouth: [256, 382, 50, 18], eyes: [[181, 291, 50, 35], [331, 291, 50, 35]],
-    brows: [[183, 230, 45, 12], [330, 230, 45, 12]] },
-  emma: { mouth: [256, 396, 54, 19], eyes: [[187, 284, 46, 29], [325, 284, 46, 29]],
-    brows: [[184, 240, 43, 12], [325, 240, 43, 12]] },
-  maya: { mouth: [256, 412, 56, 23], eyes: [[189, 302, 46, 30], [324, 302, 46, 30]],
-    brows: [[186, 250, 45, 14], [325, 250, 45, 14]] }
-};
+import { clients } from '../phase03/clients.mjs?v=06a';
 
 const width = 768;
 const height = 960;
 const scale = 1.5;
 const cache = new Map();
 const mouthFrames = new Map();
+let activeClient;
 
 function taper(distance, inner, margin) {
   const t = Math.min(1, Math.max(0, (Math.abs(distance) - inner) / margin));
@@ -50,7 +42,7 @@ function warp(source, target, feature, marginX, marginY, offset) {
 function drawExpression(context, original, id, happy) {
   const result = context.createImageData(width, height);
   result.data.set(original.data);
-  const { mouth, eyes, brows } = landmarks[id];
+  const { mouth, eyes, brows } = clients[id].landmarks;
   warp(original.data, result.data, mouth, 19, 20, (x, y) => {
     const corner = Math.min(1, (x / mouth[2]) ** 2);
     return happy ? [x * .13, 4 - 13 * corner + y * .10] :
@@ -72,7 +64,7 @@ function drawExpression(context, original, id, happy) {
 // Replace the mouth and nearby skin with a small resampled crop of the
 // active expression. The portrait and its original mouth are never stacked.
 function speakingMouth(context, original, id, frame) {
-  const [cx, cy, rx, ry] = landmarks[id].mouth;
+  const [cx, cy, rx, ry] = clients[id].landmarks.mouth;
   const left = Math.floor((cx - rx - 17) * scale);
   const top = Math.floor((cy - ry - 15) * scale);
   const patch = context.createImageData(Math.ceil((rx + 17) * 2 * scale), Math.ceil((ry + 15) * 2 * scale));
@@ -104,8 +96,13 @@ export function drawFace(portrait) {
     return;
   }
 
-  const key = id + '/' + (mood || 'neutral');
-  const originalKey = id + '/neutral';
+  if (activeClient !== id) {
+    cache.clear();
+    mouthFrames.clear();
+    activeClient = id;
+  }
+  const key = mood || 'neutral';
+  const originalKey = 'neutral';
   const context = face.getContext('2d');
   if (!cache.has(originalKey)) {
     context.clearRect(0, 0, width, height);

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="640" viewBox="0 0 512 640">
+  <defs><linearGradient id="lid0" x2="0" y2="1"><stop stop-color="#eea686"/><stop offset=".6" stop-color="#f8b39a"/><stop offset="1" stop-color="#ec9772"/></linearGradient><linearGradient id="lid1" x2="0" y2="1"><stop stop-color="#f2a888"/><stop offset=".6" stop-color="#faa98b"/><stop offset="1" stop-color="#ef9976"/></linearGradient>
+    <filter id="feather"><feGaussianBlur stdDeviation="1.9"/></filter>
+  </defs>
+  <g transform="translate(0 22)">
+    <path fill="url(#lid0)" filter="url(#feather)" transform="translate(185 261) scale(1.13 1.15) translate(-185 -261)" d="M138 241 C146 229 161 226 175 231 C205 231 226 249 228 286 C199 294 162 290 146 270Z"/>
+    <path d="M151 255 Q180 281 220 278" fill="none" stroke="#63372e" stroke-width="3" stroke-linecap="round"/>
+    <path fill="url(#lid1)" filter="url(#feather)" transform="translate(328 260) scale(1.13 1.15) translate(-328 -260)" d="M284 286 C287 251 306 231 334 229 C353 225 367 232 374 241 L369 269 C352 288 318 294 284 286Z"/>
+    <path d="M293 278 Q338 283 363 254" fill="none" stroke="#63372e" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

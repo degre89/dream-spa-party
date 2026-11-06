@@ -1,9 +1,9 @@
 import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
-import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=05r';
-import { drawFace } from './phase04/expressions.mjs?v=05';
-import { clients } from './phase03/clients.mjs?v=05';
-import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=05';
-import { patchStage } from './phase05/eye-patches.mjs?v=05';
+import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=06a';
+import { drawFace } from './phase04/expressions.mjs?v=06a';
+import { clients } from './phase03/clients.mjs?v=06a';
+import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=06a';
+import { patchStage } from './phase05/eye-patches.mjs?v=06a';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#mask');
@@ -399,10 +399,23 @@ for (const id of [...SPA_TOOLS, 'patches']) {
   else cartTools.insertBefore(button, maskToggle);
 }
 
-for (const button of document.querySelectorAll('.client')) {
-  const id = button.dataset.client;
+const clientList = $('.clients');
+for (const [id, profile] of Object.entries(clients)) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'client';
+  button.dataset.client = id;
+  button.disabled = true;
+  const image = document.createElement('img');
+  image.src = 'assets/' + profile.portrait;
+  image.alt = '';
+  image.loading = 'lazy';
+  const name = document.createElement('span');
+  name.textContent = profile.name;
+  button.append(image, name);
+  clientList.append(button);
   bindAction(button, () => start(id));
-  loadStencil('assets/' + clients[id].stencil, width, height).then(stencil => {
+  loadStencil('assets/' + profile.stencil, width, height).then(stencil => {
     stencils.set(id, stencil);
     button.disabled = false;
     $('#play').disabled = false;
