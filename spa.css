@@ -110,3 +110,4 @@ footer p { margin: 0 0 5px; }
 @media (prefers-reduced-motion: reduce) {
   .steam-plume i, .spa-eyelids { animation: none; transition: none; }
 }
+.patch-rest .spa-eyelids { opacity: 1; }

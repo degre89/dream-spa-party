@@ -4,6 +4,8 @@ import { drawFace } from './phase04/expressions.mjs';
 import { clients } from './phase03/clients.mjs?v=05';
 import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=05';
 
+import { patchStage } from './phase05/eye-patches.mjs?v=05';
+
 const $ = selector => document.querySelector(selector);
 const canvas = $('#mask');
 const { width, height } = canvas;
@@ -27,6 +29,7 @@ const tools = {
   avocado: { label: 'Avocado', hint: 'Stendi la maschera all’avocado.' },
   blueberry: { label: 'Mirtillo', hint: 'Stendi la maschera al mirtillo.' },
   honey: { label: 'Miele', hint: 'Stendi la maschera al miele.' },
+  patches: { label: 'Patch occhi', icon: true, hint: 'Metti una patch sotto ogni occhio.' },
   cream: { label: 'Crema', icon: true, hint: 'Massaggia la crema sulla pelle pulita.' }
 };
 
@@ -39,10 +42,11 @@ $('#stars').textContent = stars;
 
 let client, skin, journey, selected;
 let portrait = $('#home .portrait');
-let blinkTimer, openTimer, reactionTimer, transitionTimer, steamTimer;
+let blinkTimer, openTimer, reactionTimer, transitionTimer, steamTimer, patchTimer;
 let feedback;
 let creamTrace = [];
 let pointer = null;
+let patchOrigin;
 let handledTap;
 let frame = 0;
 let lastEffect = 0;
@@ -67,6 +71,7 @@ function resetBlink() {
 
 function show(id) {
   clearTimeout(transitionTimer);
+  clearTimeout(patchTimer);
   clearReaction();
   portrait?.classList.remove('blink');
   for (const screen of document.querySelectorAll('.screen')) {
@@ -160,14 +165,17 @@ function render() {
   const now = performance.now();
   creamTrace = creamTrace.filter(point => point.expires > now);
   const percent = journeyPercent(journey);
-  const steaming = currentAction(journey).tool === 'steamer';
+  const action = currentAction(journey);
+  const steaming = action.tool === 'steamer';
+  const patches = action.tool === 'patches' && selected === 'patches' && !journey.pending ?
+    patchStage(journey, now) : null;
+  character.classList.toggle('patch-rest', patches === 'rest');
   draw(journey.session, skin.stencil, false, client.id, creamTrace.map(point => ({
     ...point, alpha: 0.55 * (point.expires - now) / 680
-  })), steaming ? percent / 100 : null);
+  })), steaming ? percent / 100 : null, patches);
   if (creamTrace.length || journey.session.cells.some(cell => cell.creamUntil > now)) frame = requestAnimationFrame(render);
 
   const step = currentStep(journey);
-  const action = currentAction(journey);
   steamStart.hidden = !steaming;
   $('#cartToggle').hidden = steaming;
   const meter = $('#meter');
@@ -179,19 +187,22 @@ function render() {
   if ($('#step').textContent !== label) $('#step').textContent = label;
   const title = step.icon + ' ' + step.title;
   if ($('#goal').textContent !== title) $('#goal').textContent = title;
-  const message = feedback?.message ?? (journey.cleanserReady ?
+  const patchHint = patches === 'rest' ? 'Un attimo di relax…' :
+    patches === 'remove' ? 'Ora togli tutte e due le patch!' : null;
+  const message = feedback?.message ?? patchHint ?? (journey.cleanserReady ?
     'Puoi finire di stendere la schiuma o risciacquare.' : selected && acceptsTool(journey, selected) ?
       tools[selected].hint : journey.mistakes >= 2 ? help() : action.prompt);
   const hint = $('#hint');
   hint.dataset.feedback = feedback?.expression ?? '';
   if (hint.textContent !== message) hint.textContent = message;
   next.hidden = !(journey.rinseFrom || journey.cleanserReady) || journey.pending || selected === 'sponge';
-  canvas.setAttribute('aria-description', action.prompt);
+  canvas.setAttribute('aria-description', patchHint ?? action.prompt);
 }
 
 function stopStroke() {
   const id = pointer;
   pointer = null;
+  patchOrigin = null;
   if (id !== null && canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
   if (journey) endStroke(journey.session);
   cursor.classList.remove('held', 'emitting');
@@ -209,19 +220,26 @@ function move(event) {
   }
 }
 
-function paintSample(event, rect) {
+function paintSample(event, rect, released = false) {
   const rawX = (event.clientX - rect.left) * width / rect.width;
   const rawY = (event.clientY - rect.top) * height / rect.height;
   const x = Math.max(0, Math.min(width - 1, rawX));
   const y = Math.max(0, Math.min(height - 1, rawY));
   cursor.style.left = x / width * 100 + '%';
   cursor.style.top = (selected === 'steamer' ? rawY : y) / height * 100 + '%';
-  cursor.classList.add('held');
+  if (selected === 'patches' && patchStage(journey) === 'remove') cursor.classList.remove('held');
+  else cursor.classList.add('held');
   if (selected === 'steamer' && (rawX !== x || rawY !== y)) {
     endStroke(journey.session);
     return;
   }
-  const result = applyGesture(journey, selected, { x, y });
+  if (selected === 'patches' && !released) {
+    patchOrigin ??= { x, y };
+    return;
+  }
+  const point = selected === 'patches' && patchStage(journey) === 'remove' ? patchOrigin : { x, y };
+  if (!point || (selected === 'patches' && patchStage(journey) !== 'remove' && (rawX !== x || rawY !== y))) return;
+  const result = applyGesture(journey, selected, point);
   if (!result) return;
 
   const now = performance.now();
@@ -233,6 +251,11 @@ function paintSample(event, rect) {
     cursor.classList.add('emitting');
     clearTimeout(steamTimer);
     steamTimer = setTimeout(() => cursor.classList.remove('emitting'), 200);
+  } else if (result === 'patches-rest') {
+    clearReaction();
+    patchTimer = setTimeout(render, Math.max(0, journey.patchesReadyAt - performance.now()) + 16);
+  } else if (result === 'patch-on' || result === 'patch-off') {
+    sparkle(point.x, point.y, '✧');
   } else if (result === 'cleanser-ready') {
     react('smile', 'Puoi ancora stendere la schiuma!', 1800);
   } else if (result === 'rinse' || result === 'complete') {
@@ -311,7 +334,7 @@ function start(id) {
   setCart(false);
 }
 
-for (const id of SPA_TOOLS) {
+for (const id of [...SPA_TOOLS, 'patches']) {
   const { label, icon } = tools[id];
   const button = document.createElement('button');
   button.type = 'button';
@@ -368,7 +391,8 @@ canvas.addEventListener('pointerdown', event => {
 canvas.addEventListener('pointermove', move);
 canvas.addEventListener('pointerup', event => {
   if (event.pointerId !== pointer) return;
-  move(event);
+  if (selected === 'patches') paintSample(event, canvas.getBoundingClientRect(), true);
+  else move(event);
   stopStroke();
 });
 for (const type of ['pointercancel', 'lostpointercapture']) {

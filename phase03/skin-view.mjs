@@ -1,3 +1,5 @@
+import { drawEyePatches, drawEyeShadow } from '../phase05/eye-patches.mjs?v=05';
+
 // Paint the state model's cells, then clip every layer with the client's stencil.
 const materials = {
   strawberry: ['#ed619a', 0.85],
@@ -99,7 +101,7 @@ export function createSkinView(canvas) {
   const small = grid.getContext('2d');
   const view = canvas.getContext('2d');
 
-  return (session, stencil, before = false, client = "sofia", creamTrace = [], preparation = null) => {
+  return (session, stencil, before = false, client = "sofia", creamTrace = [], preparation = null, patches = null) => {
     view.clearRect(0, 0, width, height);
     if (!before) {
       small.clearRect(0, 0, grid.width, grid.height);
@@ -130,7 +132,9 @@ export function createSkinView(canvas) {
     }
     for (const condition of session.conditions) {
       const intensity = before ? condition.initial : condition.intensity * (preparation === null ? 1 : .09 + .91 * preparation);
-      if (intensity > 0) conditionMark(view, { ...condition, intensity }, skinPalettes[client]);
+      if (intensity <= 0) continue;
+      if (condition.kind === 'darkCircles') drawEyeShadow(view, { ...condition, intensity }, client);
+      else conditionMark(view, { ...condition, intensity }, skinPalettes[client]);
     }
     if (!before) {
       for (const { x, y, product } of session.cells) {
@@ -148,6 +152,7 @@ export function createSkinView(canvas) {
       view.globalAlpha = alpha;
       halo(view, x, y, 25, '#fff8e6', '#fff8e600');
     }
+    if (patches) drawEyePatches(view, session.conditions, patches);
     view.globalAlpha = 1;
     view.globalCompositeOperation = 'destination-in';
     view.drawImage(stencil, 0, 0);
