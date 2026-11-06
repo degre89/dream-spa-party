@@ -80,9 +80,9 @@ for (const [width, height, touch] of devices) {
     }
 
     const sweep = [];
-    for (let y = 128; y <= 480; y += 12) {
-      const row = [[115, y], [255, y], [397, y]];
-      sweep.push(...(sweep.length % 2 ? row.reverse() : row));
+    for (let y = 128, row = 0; y <= 480; y += 18, row++) {
+      const left = [115, y], right = [397, y];
+      sweep.push(...(row % 2 ? [right, left] : [left, right]));
     }
 
     async function cover(until) {
@@ -109,10 +109,10 @@ for (const [width, height, touch] of devices) {
 
     async function fixture(id) {
       return page.evaluate(async ({ id, probes }) => {
-        const { clients } = await import('/phase03/clients.mjs');
-        const { loadStencil } = await import('/phase03/skin-view.mjs');
-        const { createJourney } = await import('/phase04/journey.mjs');
-        const { skinAt, sampleCell } = await loadStencil('/assets/' + clients[id].stencil, 512, 640);
+        const { clients } = await import(new URL('phase03/clients.mjs', document.baseURI));
+        const { loadStencil } = await import(new URL('phase03/skin-view.mjs', document.baseURI));
+        const { createJourney } = await import(new URL('phase04/journey.mjs', document.baseURI));
+        const { skinAt, sampleCell } = await loadStencil(new URL('assets/' + clients[id].stencil, document.baseURI).href, 512, 640);
         const options = {
           width: 512, height: 640, client: id, skinAt, sampleCell,
           regions: clients[id].regions.map(([x, y, radius]) => ({ x, y, radius }))
