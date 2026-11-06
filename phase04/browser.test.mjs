@@ -9,9 +9,9 @@ const baseline = process.env.SPA_BASELINE === '1';
 const baseURL = process.env.SPA_URL || 'http://127.0.0.1:8000/';
 const devices = [[320, 568, true], [412, 915, true], [1280, 720, false]];
 const clients = {
-  sofia: { protected: [[194, 294], [316, 294], [257, 387], [190, 231], [257, 90]], forehead: [256, 184], tracks: [173, 224] },
-  emma: { protected: [[195, 288], [314, 288], [256, 402], [182, 239], [248, 116]], forehead: [254, 199], tracks: [181, 232] },
-  maya: { protected: [[197, 306], [315, 306], [257, 414], [186, 248], [249, 128]], forehead: [254, 201], tracks: [186, 237] }
+  sofia: { protected: [[194, 294], [316, 294], [257, 387], [190, 231], [257, 90]], forehead: [256, 184], tracks: [173, 224], fringe: [[256, 175], [186, 350], [326, 352], [255, 420]], hair: [168, 185] },
+  emma: { protected: [[195, 288], [314, 288], [256, 402], [182, 239], [248, 116]], forehead: [254, 199], tracks: [181, 232], fringe: [[215, 166], [171, 196], [169, 354], [338, 353], [255, 447]], hair: [332, 181] },
+  maya: { protected: [[197, 306], [315, 306], [257, 414], [186, 248], [249, 128]], forehead: [254, 201], tracks: [186, 237], fringe: [[245, 173], [175, 193], [166, 363], [343, 368], [257, 459]], hair: [167, 171] }
 };
 const masks = ['strawberry', 'avocado', 'blueberry', 'honey'];
 const correctTools = { spot: 'gel', redness: 'serum', pores: 'brush', cleanse: 'cleanser', cream: 'cream' };
@@ -120,14 +120,14 @@ for (const [width, height, touch] of devices) {
     }
 
     async function fixture(id, seed, sample = false) {
-      return page.evaluate(async ({ id, seed, sample }) => {
+      return page.evaluate(async ({ id, seed, sample, fringe, hair }) => {
         const { clients } = await import(new URL('phase03/clients.mjs', document.baseURI));
         const { createJourney } = await import(new URL('phase04/journey.mjs', document.baseURI));
         const { loadStencil } = await import(new URL('phase03/skin-view.mjs', document.baseURI));
         const client = clients[id];
-        const { skinAt } = await loadStencil('assets/' + client.stencil, 512, 640);
+        const { skinAt, sampleCell } = await loadStencil('assets/' + client.stencil, 512, 640);
         const options = {
-          width: 512, height: 640, client: id, skinAt,
+          width: 512, height: 640, client: id, skinAt, sampleCell,
           regions: client.regions.map(([x, y, radius]) => ({ x, y, radius }))
         };
         const journey = createJourney({ ...options, seed });
@@ -135,8 +135,9 @@ for (const [width, height, touch] of devices) {
           const trial = createJourney({ ...options, seed: Math.imul(index, 2654435761) });
           return { sequence: trial.sequence.join('/'), count: trial.session.conditions.length };
         }) : [];
-        return { sequence: journey.sequence, conditions: journey.session.conditions, samples };
-      }, { id, seed, sample });
+        return { sequence: journey.sequence, conditions: journey.session.conditions, samples,
+          geometry: { included: fringe.map(([x, y]) => skinAt(x, y)), excludesHair: !skinAt(...hair) } };
+      }, { id, seed, sample, fringe: clients[id].fringe, hair: clients[id].hair });
     }
 
     async function fullCart() {
@@ -173,10 +174,14 @@ for (const [width, height, touch] of devices) {
 
       let index = 0;
       for (const [id, profile] of Object.entries(clients)) {
-        const { sequence, conditions, samples } = await fixture(id, seeds[index], !index || width === 320);
+        const { sequence, conditions, samples, geometry } = await fixture(id, seeds[index], !index || width === 320);
         if (samples.length) {
           assert.equal(new Set(samples.map(trial => trial.sequence)).size, 9);
           assert.ok(samples.every(trial => trial.count > 0));
+        }
+        if (!baseline) {
+          assert.ok(geometry.included.every(Boolean), id + ' visible skin at forehead, cheeks and chin');
+          assert.ok(geometry.excludesHair, id + ' hair stays outside the stencil');
         }
         const kind = ['spot', 'redness', 'pores'][index];
         assert.deepEqual(new Set(conditions.map(mark => mark.kind)), new Set([kind]));
@@ -284,6 +289,16 @@ for (const [width, height, touch] of devices) {
             await gestureUntil(phaseFinished, 5);
           } else {
             await gestureUntil(() => element('#next').isVisible());
+            if (step === 'cleanse' && !baseline) {
+              assert.equal(await element('#meter').getAttribute('aria-label'), 'Progresso del trattamento');
+              const readyPercent = await percent();
+              for (let y = 160; y <= 480; y += 16) await stroke([[116, y], [254, y], [400, y]]);
+              await waitForFrame();
+              assert.ok(await percent() >= readyPercent && await percent() >= 99);
+              const [hair, ...fringe] = await pixels([profile.hair, ...profile.fringe]);
+              assert.equal(hair[3], 0, id + ' hair remains clean');
+              assert.ok(fringe.every(pixel => pixel[3] > 130), id + ' forehead, cheeks and chin accept foam');
+            }
             const [forehead, ...protectedPixels] = await pixels([profile.forehead, ...profile.protected]);
             assert.ok(forehead[3] > 130, 'applied product is visible');
             assert.ok(protectedPixels.every(pixel => pixel[3] === 0), 'eyes, eyebrows, lips and hair stay clear');

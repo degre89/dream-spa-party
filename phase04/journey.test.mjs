@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { endStroke, MASK_TOOLS, SPA_TOOLS } from '../phase03/facial-state.mjs';
-import { acceptsTool, advanceJourney, applyGesture, createJourney, currentAction, journeyPercent } from './journey.mjs';
+import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, journeyPercent } from './journey.mjs';
 
 const clients = ['sofia', 'emma', 'maya'];
 const options = {
@@ -59,7 +59,7 @@ function sweep(journey, tool) {
   for (let y = 156; y <= 472; y += 16) {
     for (const x of [143, 255, 369]) {
       const result = applyGesture(journey, tool, { x, y });
-      if (result === 'complete' || result === 'rinse') return result;
+      if (result === 'complete' || result === 'rinse' || result === 'cleanser-ready') return result;
     }
     endStroke(journey.session);
   }
@@ -81,6 +81,13 @@ test('all generated route types can finish, with four mask choices and one rewar
     while (!advanceJourney(journey)) {
       const correct = currentAction(journey).tool ?? MASK_TOOLS[index % MASK_TOOLS.length];
       let outcome = sweep(journey, correct);
+      if (outcome === 'cleanser-ready') {
+        assert.equal(acceptsTool(journey, 'cleanser'), true);
+        assert.equal(acceptsTool(journey, 'sponge'), true);
+        assert.equal(journey.rinseFrom, 0);
+        beginCleanserRinse(journey);
+        outcome = 'rinse';
+      }
       if (outcome === 'rinse') {
         assert.equal(currentAction(journey).tool, 'sponge');
         assert.equal(acceptsTool(journey, correct), false);
@@ -92,4 +99,36 @@ test('all generated route types can finish, with four mask choices and one rewar
     assert.equal(advanceJourney(journey), false);
     assert.ok(journey.session.completed);
   }
+});
+
+test('the cleanser can fill the remaining skin after rinsing becomes available', () => {
+  const journey = createJourney({ ...options, seed: 5, client: 'sofia' });
+  journey.index = journey.sequence.indexOf('cleanse');
+  assert.ok(journey.index > 0);
+  assert.equal(sweep(journey, 'cleanser'), 'cleanser-ready');
+  const untouched = journey.session.cells.find(cell => !cell.product);
+  assert.ok(untouched);
+  const readyPercent = journeyPercent(journey);
+  assert.ok(readyPercent < 100);
+  endStroke(journey.session);
+  assert.equal(applyGesture(journey, 'cleanser', untouched), 'improved');
+  assert.equal(untouched.product, 'foam');
+  assert.ok(journeyPercent(journey) > readyPercent);
+  beginCleanserRinse(journey);
+  assert.equal(journeyPercent(journey), 0);
+  assert.equal(acceptsTool(journey, 'cleanser'), false);
+});
+
+test('coverage is weighted by treatable area, including tiles clipped by the stencil', () => {
+  const journey = createJourney({ ...options, seed: 5, client: 'sofia',
+    sampleCell: (x, y) => options.skinAt(x, y) && { x, y, area: x < 255 ? .5 : 1 }
+  });
+  journey.index = journey.sequence.indexOf('cleanse');
+  for (const cell of journey.session.cells) {
+    if (cell.x < 255) cell.product = 'foam';
+  }
+  const left = journey.session.cells.filter(cell => cell.product);
+  const expected = Math.floor(left.length * .5 / journey.session.area * 100);
+  assert.equal(journeyPercent(journey), expected);
+  assert.ok(expected < Math.floor(left.length / journey.session.cells.length * 100));
 });
