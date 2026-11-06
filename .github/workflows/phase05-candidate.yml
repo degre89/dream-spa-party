@@ -1,0 +1,45 @@
+name: Phase 05-S candidate browser checks
+on:
+  push:
+    branches: [development/phase05-spa-experience]
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport: [320x568, 412x915, 1280x720]
+    env:
+      SPA_VIEWPORT: ${{ matrix.viewport }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - if: matrix.viewport == '412x915'
+        run: npx playwright install ffmpeg
+      - name: Verify the candidate on a local server
+        env:
+          SPA_VIDEO: ${{ matrix.viewport == '412x915' && '1' || '0' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          python3 -m http.server 8000 --bind 127.0.0.1 >test-results/http.log 2>&1 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          for attempt in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:8000/ -o /dev/null && break
+            sleep 1
+          done
+          node --test --test-reporter=tap phase03/facial-state.test.mjs phase04/journey.test.mjs phase04/browser.test.mjs | tee test-results/candidate.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dream-spa-phase05-candidate-${{ matrix.viewport }}
+          path: test-results/
+          if-no-files-found: error

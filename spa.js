@@ -3,7 +3,6 @@ import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJo
 import { drawFace } from './phase04/expressions.mjs?v=05';
 import { clients } from './phase03/clients.mjs?v=05';
 import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=05';
-
 import { patchStage } from './phase05/eye-patches.mjs?v=05';
 
 const $ = selector => document.querySelector(selector);
@@ -176,7 +175,8 @@ function selectTool(id) {
   $('#cartToggle').focus({ preventScroll: true });
   if (!journey.pending) {
     if (acceptsTool(journey, id)) {
-      react('smile', 'Proviamo sul viso!', 1800);
+      if (id === 'patches') clearReaction();
+      else react('smile', 'Proviamo sul viso!', 1800);
     } else {
       journey.mistakes++;
       const message = journey.mistakes === 1 ? 'Mmm… proviamo qualcos’altro?' : help();
@@ -204,12 +204,12 @@ function render() {
   const percent = journeyPercent(journey);
   const action = currentAction(journey);
   const steaming = action.tool === 'steamer';
-  const patches = action.tool === 'patches' && selected === 'patches' && !journey.pending ?
-    patchStage(journey, now) : null;
+  const patches = action.tool === 'patches' && !journey.pending ? patchStage(journey, now) : null;
+  const showTargets = selected === 'patches';
   character.classList.toggle('patch-rest', patches === 'rest');
   draw(journey.session, skin.stencil, false, client.id, creamTrace.map(point => ({
     ...point, alpha: 0.55 * (point.expires - now) / 680
-  })), steaming ? percent / 100 : null, patches);
+  })), steaming ? percent / 100 : null, patches && { stage: patches, showTargets });
   if (creamTrace.length || journey.session.cells.some(cell => cell.creamUntil > now)) frame = requestAnimationFrame(render);
 
   const patchHint = patches === 'rest' ? 'Un attimo di relax…' :
@@ -224,7 +224,7 @@ function render() {
   $('#percent').textContent = percent + '%';
   const label = client.name + ' · ' + (journey.index + 1) + '/' + journey.sequence.length;
   if ($('#step').textContent !== label) $('#step').textContent = label;
-  const patchTitle = patches === 'apply' ? 'Metti le patch' :
+  const patchTitle = patches === 'apply' && showTargets ? 'Metti le patch' :
     patches === 'rest' ? 'Un po’ di relax' : patches === 'remove' ? 'Togli le patch' : null;
   const title = step.icon + ' ' + (patchTitle ?? step.title);
   if ($('#goal').textContent !== title) $('#goal').textContent = title;

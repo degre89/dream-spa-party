@@ -152,7 +152,7 @@ export function createSkinView(canvas) {
       view.globalAlpha = alpha;
       halo(view, x, y, 25, '#fff8e6', '#fff8e600');
     }
-    if (patches) drawEyePatches(view, session.conditions, patches);
+    if (patches) drawEyePatches(view, session.conditions, patches.stage, patches.showTargets);
     view.globalAlpha = 1;
     view.globalCompositeOperation = 'destination-in';
     view.drawImage(stencil, 0, 0);

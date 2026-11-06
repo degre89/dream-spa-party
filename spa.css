@@ -94,9 +94,9 @@ footer p { margin: 0 0 5px; }
 .relaxing .spa-eyelids { opacity: 1; }
 #character.steaming #tool { background: none; box-shadow: none; padding: 0; transform: translate(0, 0); }
 #character.steaming #tool .icon { width: clamp(38px, 11vw, 61px); filter: drop-shadow(0 3px 3px #63255765); }
-.steam-plume { position: absolute; inset: -7% 37% 62% -25%; opacity: 0; transition: opacity .18s ease; }
+.steam-plume { position: absolute; inset: -14% 34% 57% -40%; opacity: 0; transition: opacity .18s ease; }
 .emitting .steam-plume { opacity: 1; }
-.steam-plume i { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(ellipse, #fff 10%, #ffe8fa 38%, #fff0 73%); filter: drop-shadow(0 0 3px #b865ac); animation: steam-puff .65s ease-out infinite; }
+.steam-plume i { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(ellipse, #fff 16%, #ffeafa 41%, #fff0 76%); filter: drop-shadow(0 0 3px #b865ac); animation: steam-puff .65s ease-out infinite; }
 .steam-plume i:nth-child(2) { animation-delay: -.22s; }
 .steam-plume i:nth-child(3) { animation-delay: -.44s; }
 @keyframes steam-puff {
@@ -108,7 +108,7 @@ footer p { margin: 0 0 5px; }
 }
 .patch-rest .spa-eyelids { opacity: 1; }
 
-.dialogue { position: relative; display: grid; align-items: center; width: 100%; min-height: 48px; padding: 0 41px 0 3px; }
+.dialogue { position: relative; z-index: 1; transform: translateY(clamp(0px, (100dvh - 660px) * .21, 55px)); display: grid; align-items: center; width: 100%; min-height: 48px; padding: 0 41px 0 3px; }
 #hint { position: relative; justify-self: center; max-width: 100%; margin: 0; padding: 6px 10px; border: 2px solid #fff; border-radius: 14px; background: #fff6fc; box-shadow: 0 3px 8px #6a245940; font-size: clamp(.79rem, 3.4vw, .95rem); line-height: 1.15; text-align: center; }
 #hint:empty { visibility: hidden; }
 #hint:not(:empty)::after { content: ""; position: absolute; left: 58%; top: 100%; width: 8px; height: 8px; transform: translateY(-4px) rotate(45deg); border: solid white; border-width: 0 2px 2px 0; background: #fff6fc; }

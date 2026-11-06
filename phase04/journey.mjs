@@ -1,11 +1,10 @@
 import { createSession, endStroke, MASK_TOOLS, readSkin, seededRandom, treat } from '../phase03/facial-state.mjs?v=04e';
-
 import { eyeShadows, patchProgress, usePatch } from '../phase05/eye-patches.mjs?v=05';
 import { prepareSkin } from '../phase05/steam.mjs?v=05';
 
 const steps = {
   steam: { tool: 'steamer', icon: '☁', title: 'Nuvole di vapore', prompt: 'Trascina il vaporizzatore sul viso.', hint: 'Passa sulla fronte, sulle guance e sul mento.' },
-  darkCircles: { tool: 'patches', icon: '☾', title: 'Patch sotto gli occhi', prompt: 'Coccoliamo il contorno occhi?', hint: 'Cerca le due mezzelune rosa.' },
+  darkCircles: { tool: 'patches', icon: '☾', title: 'Patch sotto gli occhi', prompt: 'Scegli le patch nel carrello.', hint: 'Cerca le due mezzelune rosa.' },
   spot: { tool: 'gel', icon: '✦', title: 'Brufolini', prompt: 'Mi aiuti con questi brufolini?', hint: 'Cerca il tubetto per i puntini.' },
   redness: { tool: 'serum', icon: '♡', title: 'Guance rosate', prompt: 'Coccoliamo le guance rosate?', hint: 'Cerca la boccetta con il contagocce.' },
   pores: { tool: 'brush', icon: '❋', title: 'Piccoli pori', prompt: 'Vedi quei gruppetti di puntini?', hint: 'Cerca qualcosa di morbido con le setole.' },
@@ -70,9 +69,7 @@ function spatialCoverage(session, isCovered, target = .88, zoneTarget = .55) {
   const overall = treated / session.area;
   const minimum = Math.min(...[...regions.values()].filter(r => r.total >= 8)
     .map(r => r.covered / r.total));
-  // 88% total, with at least 55% of each reachable macrozone.
-  // Show immediate local feedback, but never award completion until the
-  // whole face and every reachable macrozone have received treatment.
+  // Both the total coverage and each reachable facial zone must meet their targets.
   if (overall >= target && minimum >= zoneTarget) return 1;
   return Math.min(.99, .7 * Math.min(1, overall / target) + .3 * Math.min(1, minimum / zoneTarget));
 }

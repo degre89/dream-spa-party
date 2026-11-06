@@ -66,9 +66,9 @@ export function drawEyeShadow(view, { x, y, side, intensity }, client) {
   view.restore();
 }
 
-export function drawEyePatches(view, conditions, stage) {
+export function drawEyePatches(view, conditions, stage, showTargets) {
   for (const { x, y, side, patch } of conditions) {
-    if (patch === 'off') continue;
+    if (patch === 'off' || (patch === 'empty' && !showTargets)) continue;
     view.save();
     view.translate(x, y);
     view.scale(side, 1);
