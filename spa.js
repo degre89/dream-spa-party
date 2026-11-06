@@ -1,5 +1,5 @@
-import { endStroke, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
-import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=05';
+import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
+import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=05r';
 import { drawFace } from './phase04/expressions.mjs?v=05';
 import { clients } from './phase03/clients.mjs?v=05';
 import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=05';
@@ -13,24 +13,29 @@ const cursor = $('#tool');
 const next = $('#next');
 const steamStart = $('#steamStart');
 const cart = $('#cart');
+const cartToggle = $('#cartToggle');
+const cartTools = $('#cartTools');
+const maskToggle = $('#maskToggle');
+const maskPanel = $('#maskPanel');
+const maskOptions = $('#maskOptions');
 const hint = $('#hint');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const draw = createSkinView(canvas);
 const drawComparison = createSkinView($('#comparison'));
 
 const tools = {
-  steamer: { label: 'Vaporizzatore', icon: true, hint: 'Passa sulla fronte, sulle guance e sul mento.' },
-  cleanser: { label: 'Detergente', icon: true, hint: 'Stendi la schiuma sulla pelle.' },
-  brush: { label: 'Spazzolina', icon: true, hint: 'Fai piccoli cerchi dove vedi i pori.' },
-  sponge: { label: 'Spugnetta', icon: true, hint: 'Passa la spugnetta sul prodotto rimasto.' },
-  gel: { label: 'Gel', icon: true, hint: 'Tocca i puntini con una goccia di gel.' },
-  serum: { label: 'Siero', icon: true, hint: 'Massaggia piano le zone arrossate.' },
-  strawberry: { label: 'Fragola', hint: 'Stendi la maschera alla fragola.' },
-  avocado: { label: 'Avocado', hint: 'Stendi la maschera all’avocado.' },
-  blueberry: { label: 'Mirtillo', hint: 'Stendi la maschera al mirtillo.' },
-  honey: { label: 'Miele', hint: 'Stendi la maschera al miele.' },
-  patches: { label: 'Patch occhi', icon: true, hint: 'Metti una patch sotto ogni occhio.' },
-  cream: { label: 'Crema', icon: true, hint: 'Massaggia la crema sulla pelle pulita.' }
+  steamer: { name: 'il vaporizzatore', label: 'Vaporizzatore', icon: true, hint: 'Passa sulla fronte, sulle guance e sul mento.' },
+  cleanser: { name: 'il detergente', label: 'Detergente', icon: true, hint: 'Stendi la schiuma sulla pelle.' },
+  brush: { name: 'la spazzolina', label: 'Spazzolina', icon: true, hint: 'Fai piccoli cerchi dove vedi i pori.' },
+  sponge: { name: 'la spugnetta', label: 'Spugnetta', icon: true, hint: 'Passa la spugnetta sul prodotto rimasto.' },
+  gel: { name: 'il gel', label: 'Gel', icon: true, hint: 'Tocca i puntini con una goccia di gel.' },
+  serum: { name: 'il siero', label: 'Siero', icon: true, hint: 'Massaggia piano le zone arrossate.' },
+  strawberry: { name: 'la maschera alla fragola', label: 'Fragola', hint: 'Stendi la maschera alla fragola.' },
+  avocado: { name: 'la maschera all’avocado', label: 'Avocado', hint: 'Stendi la maschera all’avocado.' },
+  blueberry: { name: 'la maschera al mirtillo', label: 'Mirtillo', hint: 'Stendi la maschera al mirtillo.' },
+  honey: { name: 'la maschera al miele', label: 'Miele', hint: 'Stendi la maschera al miele.' },
+  patches: { name: 'le patch', label: 'Patch occhi', icon: true, hint: 'Metti una patch sotto ogni occhio.' },
+  cream: { name: 'la crema', label: 'Crema', icon: true, hint: 'Massaggia la crema sulla pelle pulita.' }
 };
 
 let stars = 0;
@@ -146,19 +151,27 @@ function setPortrait(container, id) {
 
 function setCart(open) {
   cart.hidden = !open;
-  $('#cartToggle').setAttribute('aria-expanded', String(open));
+  cartToggle.setAttribute('aria-expanded', String(open));
+  if (!open) showMasks(false);
+}
+
+function showMasks(open) {
+  cartTools.hidden = open;
+  maskPanel.hidden = !open;
+  maskToggle.setAttribute('aria-expanded', String(open));
 }
 
 function updateTool(id) {
   selected = id;
-  for (const button of cart.children) button.setAttribute('aria-pressed', String(button.dataset.tool === id));
+  for (const button of cart.querySelectorAll('[data-tool]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.tool === id));
+  }
   character.classList.toggle('rinsing', id === 'sponge');
   character.classList.toggle('steaming', id === 'steamer');
   steamStart.setAttribute('aria-pressed', String(id === 'steamer'));
   cursor.replaceChildren();
   if (!id || id === 'sponge') return;
-  if (tools[id].icon) cursor.append(toolIcon(id));
-  else cursor.textContent = '✦';
+  cursor.append(toolGraphic(id));
   if (id === 'steamer') {
     const plume = document.createElement('span');
     plume.className = 'steam-plume';
@@ -168,32 +181,27 @@ function updateTool(id) {
 }
 
 function selectTool(id) {
+  if (journey.pending) return;
   stopStroke();
   if (id === 'sponge') beginCleanserRinse(journey);
   updateTool(id);
   setCart(false);
-  $('#cartToggle').focus({ preventScroll: true });
-  if (!journey.pending) {
-    if (acceptsTool(journey, id)) {
-      if (id === 'patches') clearReaction();
-      else react('smile', 'Proviamo sul viso!', 1800);
-    } else {
-      journey.mistakes++;
-      const message = journey.mistakes === 1 ? 'Mmm… proviamo qualcos’altro?' : help();
-      react('puzzled', message, 2000);
-    }
+  cartToggle.focus({ preventScroll: true });
+  if (acceptsTool(journey, id)) {
+    if (id === 'patches') clearReaction();
+    else react('smile', 'Proviamo sul viso!', 1800);
+  } else {
+    journey.mistakes++;
+    const message = journey.mistakes === 1 ? 'Mmm… proviamo qualcos’altro?' : help();
+    react('puzzled', message, 2000);
   }
   render();
 }
 
 function help() {
   const action = currentAction(journey);
-  if (journey.mistakes >= 3) {
-    if (action.tool) return 'Prova: ' + tools[action.tool].label + '.';
-    if (journey.mask) return 'Continua con ' + tools[journey.mask].label + '.';
-  }
-  if (journey.mask && !action.tool) return 'Cerca il vasetto già usato.';
-  return action.hint;
+  const tool = action.tool ?? journey.mask;
+  return tool ? 'Prova con ' + tools[tool].name + '!' : 'Scegli una maschera dal carrello!';
 }
 
 function render() {
@@ -216,7 +224,7 @@ function render() {
     patches === 'remove' ? 'Ora togli tutte e due le patch!' : null;
   const step = currentStep(journey);
   steamStart.hidden = !steaming;
-  $('#cartToggle').hidden = steaming;
+  cartToggle.hidden = steaming;
   const meter = $('#meter');
   $('#fill').style.width = percent + '%';
   meter.setAttribute('aria-valuenow', percent);
@@ -236,7 +244,8 @@ function render() {
     lastCue = cue;
     say(message);
   }
-  next.hidden = !(journey.rinseFrom || journey.cleanserReady) || journey.pending || selected === 'sponge';
+  next.hidden = Boolean(journey.mask) || !(journey.rinseFrom || journey.cleanserReady) ||
+    journey.pending || selected === 'sponge';
   canvas.setAttribute('aria-description', patchHint ?? action.prompt);
 }
 
@@ -301,7 +310,8 @@ function paintSample(event, rect, released = false) {
     react('smile', 'Puoi ancora stendere la schiuma!', 1800);
   } else if (result === 'rinse' || result === 'complete') {
     stopStroke();
-    react('smile', result === 'rinse' ? 'Fatto! Ora risciacquiamo.' : selected === 'steamer' ? 'Ora sono pronta! ✦' : 'Che bello! ✦');
+    if (result === 'rinse') updateTool(undefined);
+    react('smile', result === 'rinse' ? 'Fatto! Scegli la spugnetta nel carrello.' : selected === 'steamer' ? 'Ora sono pronta! ✦' : 'Che bello! ✦');
     sparkle(x, y, '✧ ✦', true);
     if (result === 'complete') transitionTimer = setTimeout(nextStep, 780);
   } else if (now >= nextReaction) {
@@ -341,8 +351,9 @@ function nextStep() {
   creamTrace = [];
   cancelAnimationFrame(frame);
   frame = 0;
+  updateTool(undefined);
+  setCart(false);
   if (!advanceJourney(journey)) {
-    updateTool(undefined);
     render();
     return;
   }
@@ -376,20 +387,16 @@ function start(id) {
 }
 
 for (const id of [...SPA_TOOLS, 'patches']) {
-  const { label, icon } = tools[id];
+  const { label } = tools[id];
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.tool = id;
   button.className = 'spa-tool';
   button.setAttribute('aria-pressed', 'false');
-  const graphic = icon ? toolIcon(id) : document.createElement('img');
-  if (!icon) {
-    graphic.src = 'assets/jar-' + id + '.svg';
-    graphic.alt = '';
-  }
-  button.append(graphic, label);
+  button.append(toolGraphic(id), label);
   bindAction(button, () => selectTool(id));
-  cart.append(button);
+  if (MASK_TOOLS.includes(id)) maskOptions.append(button);
+  else cartTools.insertBefore(button, maskToggle);
 }
 
 for (const button of document.querySelectorAll('.client')) {
@@ -407,6 +414,7 @@ for (const button of document.querySelectorAll('.client')) {
 
 function beginStroke(event) {
   pointer = event.pointerId;
+  cursor.classList.toggle('touch', event.pointerType === 'touch');
   canvas.setPointerCapture(pointer);
   move(event);
 }
@@ -449,13 +457,29 @@ function goHome() {
   show('home');
 }
 for (const selector of ['#chooseHome', '#back', '#goHome']) bindAction($(selector), goHome);
-bindAction($('#cartToggle'), () => setCart(cart.hidden));
+bindAction(cartToggle, () => setCart(cart.hidden));
+bindAction(maskToggle, () => {
+  showMasks(true);
+  $('#maskBack').focus({ preventScroll: true });
+});
+bindAction($('#maskBack'), () => {
+  showMasks(false);
+  maskToggle.focus({ preventScroll: true });
+});
 bindAction($('#repeatHint'), () => {
   if (lastCue) say(lastCue.message ?? lastCue);
 });
 bindAction($('#before'), () => compare(true));
 bindAction($('#after'), () => compare(false));
 bindAction(next, () => { if (!next.hidden) selectTool('sponge'); });
+
+function toolGraphic(id) {
+  if (tools[id].icon) return toolIcon(id);
+  const jar = document.createElement('img');
+  jar.src = 'assets/jar-' + id + '.svg';
+  jar.alt = '';
+  return jar;
+}
 
 function toolIcon(id) {
   const namespace = 'http://www.w3.org/2000/svg';

@@ -1,4 +1,4 @@
-name: Phase 04 live Pages checks
+name: Phase 05-R live Pages checks
 
 on:
   push:
@@ -54,23 +54,26 @@ jobs:
           echo 'Verified index.html' | tee test-results/live-assets.log
           # Verify every published asset, not only index.html. Pages/CDN can
           # briefly serve mixed revisions after a successful deployment.
-          for file in 'spa.js' 'spa.css' phase03/{clients,facial-state,skin-view}.mjs phase04/{journey,expressions}.mjs phase05/*.mjs assets/*; do
+          for file in 'spa.js?v=05r' 'spa.css?v=05r' 'phase04/journey.mjs?v=05r' phase03/{clients,facial-state,skin-view}.mjs phase04/expressions.mjs phase05/*.mjs assets/*; do
+            local_file=${file%%\?*}
+            separator='?'
+            if [[ $file == *\?* ]]; then separator='&'; fi
             matched=false
             for attempt in $(seq 1 48); do
-              if curl -fsSL --retry 2 --max-time 15 "${SPA_URL}$file?release=${GITHUB_SHA}&attempt=$attempt" -o "$response" &&
-                 cmp -s "$file" "$response"; then
+              if curl -fsSL --retry 2 --max-time 15 "${SPA_URL}$file${separator}release=${GITHUB_SHA}&attempt=$attempt" -o "$response" &&
+                 cmp -s "$local_file" "$response"; then
                 matched=true
                 break
               fi
               if [ "$attempt" -eq 1 ]; then
                 echo "Waiting for public $file to match commit $GITHUB_SHA" | tee -a test-results/live-assets.log
-                sha256sum "$file" "$response" | tee -a test-results/live-assets.log
+                sha256sum "$local_file" "$response" | tee -a test-results/live-assets.log
               fi
               sleep 5
             done
             if [ "$matched" != true ]; then
               echo "Public asset mismatch after retries: $file" | tee -a test-results/live-assets.log
-              cmp "$file" "$response" || true
+              cmp "$local_file" "$response" || true
               exit 1
             fi
             echo "Verified $file" | tee -a test-results/live-assets.log
@@ -81,6 +84,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase04-live
+          name: dream-spa-phase05r-live
           path: test-results/
           if-no-files-found: warn

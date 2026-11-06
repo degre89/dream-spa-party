@@ -1,7 +1,7 @@
-name: Phase 05-S candidate browser checks
+name: Phase 05-R candidate browser checks
 on:
   push:
-    branches: [development/phase05-spa-experience]
+    branches: [development/phase05r-gameplay-cart-refinements]
 permissions:
   contents: read
 jobs:
@@ -36,6 +36,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase05-candidate-${{ matrix.viewport }}
+          name: dream-spa-phase05r-candidate-${{ matrix.viewport }}
           path: test-results/
           if-no-files-found: error
