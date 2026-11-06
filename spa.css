@@ -256,3 +256,7 @@ footer p { margin: 0 0 5px; }
 @media (prefers-reduced-motion: reduce) {
   .shop-gift:has(#claimGift:enabled) .gift-art, .gift-art.gift-opened { animation: none; }
 }
+#shop button { -webkit-tap-highlight-color: transparent; }
+@media (min-width: 520px) {
+  .shop-products { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

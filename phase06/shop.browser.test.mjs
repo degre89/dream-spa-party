@@ -81,6 +81,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       await tap('#confirmPurchase');
       await balance(5);
       await el('#shopStatus').filter({ hasText: 'Lilla con stelline' }).waitFor();
+      await el('.shop-card').filter({ hasText: 'Lilla con stelline' }).scrollIntoViewIfNeeded();
       await shot('07-prodotto-sbloccato');
 
       await page.reload();

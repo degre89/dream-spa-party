@@ -140,6 +140,7 @@ export function mountShop({ wallet, clients, products, productGraphic, changed }
   for (const [id, tab] of Object.entries(tabs)) {
     tab.addEventListener('click', () => {
       department = id;
+      status.textContent = '';
       for (const [key, button] of Object.entries(tabs)) button.setAttribute('aria-pressed', String(id === key));
       render();
     });
