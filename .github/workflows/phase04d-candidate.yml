@@ -1,0 +1,44 @@
+name: Phase 04-D candidate browser checks
+on:
+  push:
+    branches: [development/phase04d-cleanser-expressions]
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - name: Test the candidate and capture comparable baseline screens
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          baseline="$(mktemp -d)"
+          git worktree add --detach "$baseline" fddb3c099c4d09aea713ea7bb38ef953a3173468
+          python3 -m http.server 8000 --bind 127.0.0.1 >test-results/candidate-http.log 2>&1 &
+          candidate_server=$!
+          python3 -m http.server 8001 --bind 127.0.0.1 --directory "$baseline" >test-results/baseline-http.log 2>&1 &
+          baseline_server=$!
+          trap 'kill "$candidate_server" "$baseline_server"' EXIT
+          for port in 8000 8001; do
+            for attempt in $(seq 1 20); do
+              curl -fsS "http://127.0.0.1:$port/" -o /dev/null && break
+              sleep 1
+            done
+          done
+          node --test --test-reporter=tap phase03/facial-state.test.mjs phase04/journey.test.mjs phase04/browser.test.mjs | tee test-results/candidate.tap
+          SPA_BASELINE=1 SPA_URL=http://127.0.0.1:8001/ node --test --test-reporter=tap phase04/browser.test.mjs | tee test-results/baseline.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dream-spa-phase04d-before-after
+          path: test-results/
+          if-no-files-found: error

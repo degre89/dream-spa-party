@@ -1,6 +1,5 @@
 // Paint the state model's cells, then clip every layer with the client's stencil.
 const materials = {
-  foam: ['#fff6fc', 0.78],
   strawberry: ['#ed619a', 0.85],
   avocado: ['#8bc872', 0.87],
   blueberry: ['#a580df', 0.86],
@@ -83,7 +82,15 @@ export function createSkinView(canvas) {
     view.clearRect(0, 0, width, height);
     if (!before) {
       small.clearRect(0, 0, grid.width, grid.height);
+      const foam = new Path2D();
       for (const { x, y, product, clean, glow, hydration, creamUntil = 0 } of session.cells) {
+        if (product === 'foam') {
+          // Overlap neighboring treated cells, then composite once to keep the
+          // opacity uniform. The same cells drive progress and rinsing.
+          foam.moveTo(x + 8, y);
+          foam.arc(x, y, 8, 0, Math.PI * 2);
+          continue;
+        }
         const material = materials[product];
         const light = Math.max(glow, hydration * 0.7, clean * 0.4);
         const creamAlpha = Math.max(0, Math.min(1, (creamUntil - performance.now()) / 1500));
@@ -94,6 +101,10 @@ export function createSkinView(canvas) {
       }
       view.imageSmoothingEnabled = true;
       view.drawImage(grid, 0, 0, width, height);
+      view.fillStyle = '#fff6fc';
+      view.globalAlpha = .78;
+      view.fill(foam);
+      view.globalAlpha = 1;
     }
     for (const condition of session.conditions) {
       const intensity = before ? condition.initial : condition.intensity;

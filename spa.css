@@ -16,7 +16,7 @@ h2 { font: 900 clamp(1.65rem, 7vw, 2.5rem)/1 Georgia, serif; margin: 5px 0; }
 .tagline { margin: 6px 0 0; letter-spacing: .08em; }
 .stage { width: 100%; flex: 1; min-height: 0; display: grid; place-items: center; container-type: size; }
 .hero, #character { width: min(100cqw, 80cqh); aspect-ratio: 4 / 5; display: block; }
-.hero { filter: drop-shadow(0 10px 14px #60244a70); object-fit: contain; }
+.hero, .reaction-face { filter: drop-shadow(0 10px 14px #60244a70); object-fit: contain; }
 #character { position: relative; isolation: isolate; user-select: none; }
 #character .hero, canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 canvas { touch-action: none; }
@@ -38,7 +38,7 @@ footer p { margin: 0 0 5px; }
 .reward { padding: 14px 20px; margin: 0; }
 @keyframes float { to { transform: translateY(-9px); } }
 @media (prefers-reduced-motion: reduce) { .award { animation: none; } .particle { animation-duration: .01s; } }
-.hero { mask-image: linear-gradient(#000 92%, transparent); }
+.hero, .reaction-face { mask-image: linear-gradient(#000 92%, transparent); }
 .rinsing #tool { display: block; left: 87%; top: 76%; }
 .rinsing .particle::before { content: ""; position: absolute; z-index: -1; width: 23px; height: 15px; left: 2px; top: 10px; border-radius: 50%; background: #fff9; box-shadow: -8px 2px 0 -3px #fffd, 9px -2px 0 -4px #fffe; }
 
@@ -48,8 +48,10 @@ footer p { margin: 0 0 5px; }
 .portrait .hero, .expression { position: absolute; inset: 0; width: 100%; height: 100%; }
 #character .portrait { width: 100%; height: 100%; }
 .expression { object-fit: contain; opacity: 0; transition: opacity 100ms ease-in-out; }
-.blink .eyelids, .relax .eyelids, .smile .grin, .puzzled .puzzled-face { opacity: 1; }
-.relax .eyelids, .grin { transition-duration: 170ms; }
+.blink .eyelids, .smile .grin { opacity: 1; }
+.reaction-face[hidden] { display: none; }
+.portrait[data-face] img.hero { opacity: 0; }
+.grin { transition-duration: 170ms; }
 #done .award { position: absolute; bottom: 4%; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   .expression { transition: none; }
@@ -85,7 +87,4 @@ footer p { margin: 0 0 5px; }
 #hint { display: grid; align-items: center; font-size: clamp(.88rem, 3.4vw, 1rem); }
 #hint[data-feedback="puzzled"] { color: #774376; }
 #hint[data-feedback="smile"] { color: #236b53; }
-.puzzled-face { transform: translateY(2px); transition: opacity .16s, transform .2s; }
-.puzzled .puzzled-face { transform: translateY(0); }
 #character .celebration { color: #fff1a6; font-size: clamp(1.15rem, 5vw, 2rem); }
-@media (prefers-reduced-motion: reduce) { .puzzled-face { transform: none; transition: none; } }

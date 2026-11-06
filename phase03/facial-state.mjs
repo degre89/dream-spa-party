@@ -116,7 +116,7 @@ function applyPoint(session, tool, point, movement) {
   const strength = movement / 8;
   let changed = false;
   if (tool === 'sponge' || tool === 'cleanser' || maskTools.has(tool) || strength > 0) {
-    const radius = tool === 'sponge' ? 34 : 25;
+    const radius = tool === 'sponge' ? 34 : tool === 'cleanser' ? 29 : 25;
     for (const cell of session.cells) {
       if (Math.abs(cell.x - point.x) > radius || Math.abs(cell.y - point.y) > radius) continue;
       if (distance(cell, point) <= radius) changed = changeCell(cell, tool, strength) || changed;
@@ -144,7 +144,8 @@ export function treat(session, tool, point) {
   const from = session.lastPoint ?? point;
   const length = distance(from, point);
   if (session.lastPoint && !length) return false;
-  const steps = Math.max(1, Math.ceil(length / 8));
+  const spacing = tool === 'cleanser' ? 4 : 8;
+  const steps = Math.max(1, Math.ceil(length / spacing));
   let changed = false;
   for (let step = 1; step <= steps; step++) {
     const x = from.x + (point.x - from.x) * step / steps;

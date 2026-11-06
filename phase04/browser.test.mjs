@@ -4,20 +4,21 @@ import { createRequire } from 'node:module';
 import { test } from 'node:test';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
-const seeds = [0, 1, 5, 7, 9];
+const seeds = [5, 6, 7, 0, 9];
+const baseline = process.env.SPA_BASELINE === '1';
 const baseURL = process.env.SPA_URL || 'http://127.0.0.1:8000/';
 const devices = [[320, 568, true], [412, 915, true], [1280, 720, false]];
 const clients = {
-  sofia: { protected: [[194, 294], [316, 294], [257, 387], [190, 231], [257, 90]], forehead: [256, 184] },
-  emma: { protected: [[195, 288], [314, 288], [256, 402], [182, 239], [248, 116]], forehead: [254, 199] },
-  maya: { protected: [[197, 306], [315, 306], [257, 414], [186, 248], [249, 128]], forehead: [254, 201] }
+  sofia: { protected: [[194, 294], [316, 294], [257, 387], [190, 231], [257, 90]], forehead: [256, 184], tracks: [173, 224] },
+  emma: { protected: [[195, 288], [314, 288], [256, 402], [182, 239], [248, 116]], forehead: [254, 199], tracks: [181, 232] },
+  maya: { protected: [[197, 306], [315, 306], [257, 414], [186, 248], [249, 128]], forehead: [254, 201], tracks: [186, 237] }
 };
 const masks = ['strawberry', 'avocado', 'blueberry', 'honey'];
 const correctTools = { spot: 'gel', redness: 'serum', pores: 'brush', cleanse: 'cleanser', cream: 'cream' };
 
 for (const [width, height, touch] of devices) {
   test(`${width}×${height} · ${touch ? 'touch' : 'mouse'} · three complete sessions`, { timeout: 230000 }, async () => {
-    const dir = `test-results/${width}x${height}`;
+    const dir = `test-results/${baseline ? 'before/' : ''}${width}x${height}`;
     await mkdir(dir, { recursive: true });
     const browser = await chromium.launch(process.env.SPA_CHROME_PATH ?
       { executablePath: process.env.SPA_CHROME_PATH, args: ['--no-sandbox'] } : { channel: 'chrome' });
@@ -26,6 +27,7 @@ for (const [width, height, touch] of devices) {
     const page = await context.newPage();
     const cdp = touch && await context.newCDPSession(page);
     const errors = [];
+    const cleanserEvidence = [];
     page.on('pageerror', error => errors.push(error.message));
     page.on('response', response => {
       if (response.status() >= 400 && !response.url().endsWith('/favicon.ico')) {
@@ -101,6 +103,16 @@ for (const [width, height, touch] of devices) {
     const percent = async () => Number(await element('#meter').getAttribute('aria-valuenow'));
     const canvasPNG = selector => element(selector).evaluate(canvas => canvas.toDataURL());
 
+    async function reaction(mood, id) {
+      if (!baseline) {
+        const active = element(`#spa .portrait[data-face="${mood}"] .reaction-face`);
+        await active.waitFor({ state: 'visible' });
+        assert.equal(await element('#spa img.hero').evaluate(image => getComputedStyle(image).opacity), '0');
+        assert.ok(await active.evaluate(canvas => canvas.getContext('2d').getImageData(384, 430, 1, 1).data[3] > 240));
+      }
+      await shot(`expression-${id}-${mood}`);
+    }
+
     async function viewportFits() {
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth &&
         document.documentElement.scrollHeight <= innerHeight + 1), 'screen fits the viewport');
@@ -170,14 +182,18 @@ for (const [width, height, touch] of devices) {
         await activate(`#choose [data-client="${id}"]`);
         await element(`#spa.on .portrait[data-client="${id}"]`).waitFor();
         await viewportFits();
-        assert.ok(await element('#spa .hero').evaluate(async image => { await image.decode(); return image.naturalWidth > 0; }));
+        assert.ok(await element('#spa img.hero').evaluate(async image => { await image.decode(); return image.naturalWidth > 0; }));
         const initial = await canvasPNG('#mask');
         const positions = conditions.map(({ x, y, radius }) => kind === 'pores' ?
           [Math.round(x - .48 * radius), Math.round(y - .21 * radius)] : [x, y]);
         const visible = await pixels(positions);
         assert.ok(visible.every(pixel => pixel[3] > 145), 'marks stand out in the skin layer');
         assert.ok((await pixels(profile.protected)).every(pixel => pixel[3] === 0));
-        await shot('03-' + id + '-' + kind);
+        if (!baseline) {
+          assert.ok(await element('#spa .reaction-face').isHidden());
+          assert.equal(await element('#spa img.hero').evaluate(image => getComputedStyle(image).opacity), '1');
+        }
+        await shot(`expression-${id}-neutral`);
         assert.equal(await percent(), 0);
         await fullCart();
         if (index === 0) await shot('04-carrello-completo');
@@ -186,9 +202,8 @@ for (const [width, height, touch] of devices) {
         const correct = correctTools[kind];
         await pick('cream');
         await element('#spa .portrait.puzzled').waitFor();
-        assert.ok(await element('#spa .puzzled-face').evaluate(async image => { await image.decode(); return image.naturalWidth > 0; }));
-        await shot('05-reazione-perplessa-' + id);
-        assert.equal(await element('#spa .puzzled-face').evaluate(el => getComputedStyle(el).opacity), '1');
+        if (baseline) await element('#spa .puzzled-face').evaluate(image => image.decode());
+        await reaction('sad', id);
         for (let attempt = 0; attempt < 8; attempt++) await stroke([[mark.x, mark.y], [mark.x + 10, mark.y]]);
         assert.equal(await canvasPNG('#mask'), initial, 'wrong tool never changes the visible skin');
         assert.equal(await percent(), 0, 'repeated wrong gestures never complete a stage');
@@ -199,10 +214,9 @@ for (const [width, height, touch] of devices) {
         assert.match(await element('#hint').innerText(), /^Prova:/);
         await pick(correct);
         await element('#spa .portrait.smile').waitFor();
-        assert.ok(await element('#spa .grin').evaluate(async image => { await image.decode(); return image.naturalWidth > 0; }));
+        if (baseline) await element('#spa .grin').evaluate(image => image.decode());
         assert.equal(await percent(), 0, 'choosing the right product does not advance');
-        await shot('06-sorriso-' + id);
-        assert.equal(await element('#spa .grin').evaluate(el => getComputedStyle(el).opacity), '1');
+        await reaction('happy', id);
 
         await stroke([[mark.x, mark.y], [mark.x + 7, mark.y]]);
         await waitForFrame();
@@ -223,6 +237,26 @@ for (const [width, height, touch] of devices) {
           await fullCart();
           const mask = masks[(index + devices.findIndex(device => device[0] === width)) % masks.length];
           await pick(step === 'mask' ? mask : correctTools[step]);
+          if (step === 'cleanse') {
+            const cheek = [[155, 350], [190, 350]];
+            await stroke(cheek);
+            const cheekPercent = await percent();
+            for (let repeat = 0; repeat < 10; repeat++) await stroke(cheek);
+            assert.ok(cheekPercent > 0 && cheekPercent < 100);
+            assert.equal(await percent(), cheekPercent, 'repeat passes add no new coverage');
+            assert.ok(await element('#next').isHidden(), 'one cheek cannot unlock rinsing');
+            const untouched = await pixels([[340, 350], [256, profile.tracks[0]]]);
+            assert.ok(untouched.every(pixel => pixel[3] < 40), 'distant skin remains free of foam');
+            for (const y of profile.tracks) await stroke([[217, y], [291, y]]);
+            const seam = profile.tracks[0] + 23;
+            const corridor = Array.from({ length: 7 }, (_, row) =>
+              Array.from({ length: 57 }, (_, col) => [225 + col, seam + row])).flat();
+            const alphas = (await pixels(corridor)).map(pixel => pixel[3]);
+            const belowOpacity = alphas.filter(alpha => alpha < 175).length;
+            if (!baseline) assert.equal(belowOpacity, 0, 'close strokes have no visible seam');
+            cleanserEvidence.push({ client: id, cheekPercent, samples: alphas.length, minAlpha: Math.min(...alphas), belowOpacity });
+            await shot(`cleanser-${id}-nearby-passes`);
+          }
           if (step === 'cream') {
             for (let repeat = 0; repeat < 12; repeat++) await stroke([[155, 345], [192, 345], [155, 345]]);
             const cheekPercent = await percent();
@@ -233,7 +267,12 @@ for (const [width, height, touch] of devices) {
             const creamPercent = await percent();
             assert.ok(creamPercent > 0 && creamPercent < 100, `cream after cheek and forehead: ${creamPercent}%`);
             assert.notEqual(await canvasPNG('#mask'), initial, 'cream leaves a visible trace');
+            const [fresh] = await pixels([profile.forehead]);
             if (index === 0) await shot('08-crema-in-assorbimento');
+            await page.waitForTimeout(1550);
+            const [absorbed] = await pixels([profile.forehead]);
+            assert.ok(fresh[3] > absorbed[3] + 25, `cream alpha falls as it absorbs: ${fresh[3]} → ${absorbed[3]}`);
+            assert.equal(await percent(), creamPercent, 'absorbing cream keeps spatial progress');
             await gestureUntil(async () => (await percent()) === 100, 5);
           } else {
             await gestureUntil(() => element('#next').isVisible());
@@ -241,6 +280,7 @@ for (const [width, height, touch] of devices) {
             assert.ok(forehead[3] > 130, 'applied product is visible');
             assert.ok(protectedPixels.every(pixel => pixel[3] === 0), 'eyes, eyebrows, lips and hair stay clear');
             if (step === 'mask') await shot('09-maschera-' + mask);
+            if (step === 'cleanse') await shot(`cleanser-${id}-before-rinse`);
             await fullCart();
             await pick(step === 'mask' ? 'cream' : 'gel');
             const coated = await canvasPNG('#mask');
@@ -296,6 +336,7 @@ for (const [width, height, touch] of devices) {
       await shot('failure').catch(() => {});
       throw error;
     } finally {
+      await writeFile(dir + '/cleanser-coverage.json', JSON.stringify(cleanserEvidence, null, 2));
       await writeFile(dir + '/browser-errors.json', JSON.stringify(errors, null, 2));
       await context.tracing.stop(failed ? { path: dir + '/trace.zip' } : {});
       await browser.close();

@@ -1,5 +1,6 @@
 import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs';
 import { acceptsTool, advanceJourney, applyGesture, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs';
+import { drawFace } from './phase04/expressions.mjs';
 import { clients } from './phase03/clients.mjs';
 import { createSkinView, loadStencil } from './phase03/skin-view.mjs';
 
@@ -47,12 +48,10 @@ let nextReaction = 0;
 const stencils = new Map();
 
 function scheduleBlink() {
-  if (reducedMotion.matches || document.hidden || !portrait) return;
+  if (reducedMotion.matches || document.hidden || !portrait?.querySelector('.eyelids')) return;
   blinkTimer = setTimeout(() => {
-    if (!portrait.classList.contains('relax') && !portrait.classList.contains('puzzled')) {
-      portrait.classList.add('blink');
-      openTimer = setTimeout(() => portrait.classList.remove('blink'), 145);
-    }
+    portrait.classList.add('blink');
+    openTimer = setTimeout(() => portrait.classList.remove('blink'), 145);
     scheduleBlink();
   }, 2800 + Math.random() * 2900);
 }
@@ -77,13 +76,15 @@ function show(id) {
 
 function clearReaction() {
   clearTimeout(reactionTimer);
-  portrait?.classList.remove('smile', 'relax', 'puzzled');
+  portrait?.classList.remove('smile', 'puzzled');
+  if (portrait) drawFace(portrait);
   feedback = null;
 }
 
 function react(expression, message, duration = 950) {
   clearReaction();
   portrait.classList.add(expression);
+  drawFace(portrait);
   feedback = { expression, message };
   reactionTimer = setTimeout(() => {
     clearReaction();
@@ -97,10 +98,7 @@ function setPortrait(container, id) {
   const image = container.querySelector('.hero');
   image.src = 'assets/' + profile.portrait;
   image.alt = profile.name;
-  container.querySelector('.eyelids').src = 'assets/' + profile.eyelids;
-  container.querySelector('.grin').src = 'assets/' + profile.smile;
-  const puzzled = container.querySelector('.puzzled-face');
-  if (puzzled) puzzled.src = 'assets/' + profile.puzzled;
+  image.decode().then(() => drawFace(container), () => {});
 }
 
 function setCart(open) {
@@ -187,6 +185,14 @@ function stopStroke() {
 function move(event) {
   if (event.pointerId !== pointer) return;
   const rect = canvas.getBoundingClientRect();
+  const samples = selected === 'cleanser' ? event.getCoalescedEvents?.() : null;
+  for (const sample of samples?.length ? samples : [event]) {
+    if (pointer === null) break;
+    paintSample(sample, rect);
+  }
+}
+
+function paintSample(event, rect) {
   const x = Math.max(0, Math.min(width - 1, (event.clientX - rect.left) * width / rect.width));
   const y = Math.max(0, Math.min(height - 1, (event.clientY - rect.top) * height / rect.height));
   cursor.style.left = x / width * 100 + '%';
@@ -206,7 +212,6 @@ function move(event) {
     if (result === 'complete') transitionTimer = setTimeout(nextStep, 780);
   } else if (now >= nextReaction) {
     react('smile', 'Che sollievo!', 1800);
-    portrait.classList.add('relax');
     nextReaction = now + 2300;
   }
   if (!frame) frame = requestAnimationFrame(render);
@@ -230,6 +235,7 @@ function compare(before) {
   $('#before').setAttribute('aria-pressed', String(before));
   $('#after').setAttribute('aria-pressed', String(!before));
   portrait.classList.toggle('smile', !before);
+  drawFace(portrait);
   $('#comparison').setAttribute('aria-label', 'Pelle ' + (before ? 'prima' : 'dopo') + ' il trattamento');
   drawComparison(journey.session, skin.stencil, before, client.id);
 }
