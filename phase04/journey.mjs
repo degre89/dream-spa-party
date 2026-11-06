@@ -1,6 +1,10 @@
 import { createSession, endStroke, MASK_TOOLS, readSkin, seededRandom, treat } from '../phase03/facial-state.mjs?v=04e';
+import { eyeShadows, patchProgress, usePatch } from '../phase05/eye-patches.mjs?v=05';
+import { prepareSkin } from '../phase05/steam.mjs?v=05';
 
 const steps = {
+  steam: { tool: 'steamer', icon: '☁', title: 'Nuvole di vapore', prompt: 'Trascina il vaporizzatore sul viso.', hint: 'Passa sulla fronte, sulle guance e sul mento.' },
+  darkCircles: { tool: 'patches', icon: '☾', title: 'Patch sotto gli occhi', prompt: 'Scegli le patch nel carrello.', hint: 'Cerca le due mezzelune rosa.' },
   spot: { tool: 'gel', icon: '✦', title: 'Brufolini', prompt: 'Mi aiuti con questi brufolini?', hint: 'Cerca il tubetto per i puntini.' },
   redness: { tool: 'serum', icon: '♡', title: 'Guance rosate', prompt: 'Coccoliamo le guance rosate?', hint: 'Cerca la boccetta con il contagocce.' },
   pores: { tool: 'brush', icon: '❋', title: 'Piccoli pori', prompt: 'Vedi quei gruppetti di puntini?', hint: 'Cerca qualcosa di morbido con le setole.' },
@@ -19,9 +23,11 @@ const preparations = [['cream'], ['cleanse'], ['cleanse', 'cream']];
 
 export function createJourney({ client, seed, ...skin }) {
   const random = seededRandom(seed);
-  const opening = openings[client][Math.floor(random() * 3)];
-  const sequence = [opening, ...preparations[Math.floor(random() * preparations.length)], 'mask'];
+  const first = Math.floor(random() * openings[client].length);
+  const opening = (seed >>> 0) % 4 === 0 ? 'darkCircles' : openings[client][first];
+  const sequence = ['steam', opening, ...preparations[Math.floor(random() * preparations.length)], 'mask'];
   const session = createSession({ ...skin, seed, conditionKinds: [opening] });
+  if (opening === 'darkCircles') session.conditions = eyeShadows(client);
   return { session, sequence, index: 0, mistakes: 0, mask: null, rinseFrom: 0, cleanserReady: false, pending: false };
 }
 
@@ -40,7 +46,7 @@ export function acceptsTool(journey, tool) {
 }
 
 // Each reachable stencil cell is counted once, regardless of repeated strokes.
-function spatialCoverage(session, kind) {
+function spatialCoverage(session, isCovered, target = .88, zoneTarget = .55) {
   const { cells } = session;
   const xs = cells.map(c => c.x), ys = cells.map(c => c.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
@@ -51,24 +57,21 @@ function spatialCoverage(session, kind) {
   const regions = new Map();
   let treated = 0;
   for (const cell of cells) {
-    const covered = kind === 'cream' ? cell.hydration > 0 : cell.product === 'foam';
     const region = cell.y < top ? 'forehead' :
       cell.y > bottom ? 'chin' :
       Math.abs(cell.x - midX) < (maxX - minX) * .12 ? 'nose' :
       cell.x < midX ? 'leftCheek' : 'rightCheek';
     const bucket = regions.get(region) || { total: 0, covered: 0 };
     bucket.total += cell.area;
-    if (covered) { bucket.covered += cell.area; treated += cell.area; }
+    if (isCovered(cell)) { bucket.covered += cell.area; treated += cell.area; }
     regions.set(region, bucket);
   }
   const overall = treated / session.area;
   const minimum = Math.min(...[...regions.values()].filter(r => r.total >= 8)
     .map(r => r.covered / r.total));
-  // 88% total, with at least 55% of each reachable macrozone.
-  // Show immediate local feedback, but never award completion until the
-  // whole face and every reachable macrozone have received treatment.
-  if (overall >= .88 && minimum >= .55) return 1;
-  return Math.min(.99, .7 * Math.min(1, overall / .88) + .3 * Math.min(1, minimum / .55));
+  // Both the total coverage and each reachable facial zone must meet their targets.
+  if (overall >= target && minimum >= zoneTarget) return 1;
+  return Math.min(.99, .7 * Math.min(1, overall / target) + .3 * Math.min(1, minimum / zoneTarget));
 }
 
 function progress(journey, skin) {
@@ -76,8 +79,10 @@ function progress(journey, skin) {
   const { session, rinseFrom } = journey;
   if (rinseFrom) return 1 - skin.covered / rinseFrom;
   if (kind === 'mask') return skin.covered / session.area / 0.96;
-  if (kind === 'cleanse') return spatialCoverage(session, kind);
-  if (kind === 'cream') return spatialCoverage(session, kind);
+  if (kind === 'darkCircles') return patchProgress(session);
+  if (kind === 'steam') return spatialCoverage(session, cell => cell.prepared, .72, .36);
+  if (kind === 'cleanse') return spatialCoverage(session, cell => cell.product === 'foam');
+  if (kind === 'cream') return spatialCoverage(session, cell => cell.hydration > 0);
   const { conditions } = session;
   if (!conditions.length) return 0;
   return conditions.reduce((sum, item) => sum + 1 - item.intensity / item.initial, 0) / conditions.length;
@@ -102,6 +107,14 @@ export function applyGesture(journey, tool, point) {
   if (journey.pending || !acceptsTool(journey, tool)) return null;
   if (tool === 'sponge') beginCleanserRinse(journey);
   const { session } = journey;
+  if (tool === 'patches') return usePatch(journey, point);
+  if (tool === 'steamer') {
+    if (!prepareSkin(session, point)) return null;
+    if (progress(journey) < 1) return 'steam';
+    endStroke(session);
+    journey.pending = true;
+    return 'complete';
+  }
   if (!treat(session, tool, point)) return null;
   if (MASK_TOOLS.includes(tool)) journey.mask = tool;
 

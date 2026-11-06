@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { endStroke, MASK_TOOLS, SPA_TOOLS } from '../phase03/facial-state.mjs';
+import { patchStage, usePatch } from '../phase05/eye-patches.mjs';
 import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, journeyPercent } from './journey.mjs';
 
 const clients = ['sofia', 'emma', 'maya'];
@@ -21,20 +22,22 @@ test('seeded sessions cover all clients, condition types and preparation combina
       const repeat = createJourney({ ...options, seed: sessionSeed, client });
       assert.deepEqual(journey.sequence, repeat.sequence);
       assert.deepEqual(journey.session.conditions, repeat.session.conditions);
-      assert.ok([3, 4].includes(journey.sequence.length));
+      assert.ok([4, 5].includes(journey.sequence.length));
+      assert.equal(journey.sequence[0], 'steam');
       assert.equal(journey.sequence.at(-1), 'mask');
       assert.ok(journey.session.conditions.length > 0);
-      assert.deepEqual(new Set(journey.session.conditions.map(mark => mark.kind)), new Set([journey.sequence[0]]));
-      if (journey.sequence[0] === 'spot') spotCounts.add(journey.session.conditions.length);
+      assert.deepEqual(new Set(journey.session.conditions.map(mark => mark.kind)), new Set([journey.sequence[1]]));
+      if (journey.sequence[1] === 'spot') spotCounts.add(journey.session.conditions.length);
       sequences.add(journey.sequence.join('/'));
     }
-    assert.equal(sequences.size, 9);
+    assert.equal(sequences.size, 12);
     assert.ok(spotCounts.size >= 4 && Math.max(...spotCounts) >= 9);
   }
 });
 
 test('wrong products and gestures on protected areas never change the skin', () => {
-  const journey = createJourney({ ...options, seed: 86032, client: 'sofia' });
+  const journey = createJourney({ ...options, seed: 5, client: 'sofia' });
+  journey.index = 1;
   const initial = structuredClone(journey.session.conditions);
   const correct = currentAction(journey).tool;
   const point = initial[0];
@@ -48,7 +51,7 @@ test('wrong products and gestures on protected areas never change the skin', () 
   assert.deepEqual(journey.session.conditions, initial);
   assert.equal(journeyPercent(journey), 0);
   assert.equal(advanceJourney(journey), false);
-  assert.equal(journey.index, 0);
+  assert.equal(journey.index, 1);
   applyGesture(journey, correct, point);
   applyGesture(journey, correct, { x: point.x + 5, y: point.y });
   assert.ok(journeyPercent(journey) > 0);
@@ -69,8 +72,16 @@ function sweep(journey, tool) {
 test('all generated route types can finish, with four mask choices and one reward', () => {
   for (let index = 0; index < 24; index++) {
     const journey = createJourney({ ...options, seed: Math.imul(index, 2654435761), client: clients[index % 3] });
+    assert.equal(sweep(journey, 'steamer'), 'complete');
+    advanceJourney(journey);
     const tool = currentAction(journey).tool;
-    for (const { x, y } of journey.session.conditions) {
+    if (tool === 'patches') {
+      const [left, right] = journey.session.conditions;
+      assert.equal(usePatch(journey, left, 0), 'patch-on');
+      assert.equal(usePatch(journey, right, 10), 'patches-rest');
+      assert.equal(usePatch(journey, left, 1420), 'patch-off');
+      assert.equal(usePatch(journey, right, 1430), 'complete');
+    } else for (const { x, y } of journey.session.conditions) {
       for (let pass = 0; pass < 12 && !journey.pending; pass++) {
         applyGesture(journey, tool, { x, y });
         applyGesture(journey, tool, { x: x + 6, y });
@@ -131,4 +142,51 @@ test('coverage is weighted by treatable area, including tiles clipped by the ste
   const expected = Math.floor(left.length * .5 / journey.session.area * 100);
   assert.equal(journeyPercent(journey), expected);
   assert.ok(expected < Math.floor(left.length / journey.session.cells.length * 100));
+});
+
+
+test('steam ignores a stationary device and repeated passes on one cheek', () => {
+  const journey = createJourney({ ...options, seed: 5, client: 'sofia' });
+  const start = { x: 160, y: 346 };
+  for (let count = 0; count < 20; count++) assert.equal(applyGesture(journey, 'steamer', start), null);
+  assert.equal(journeyPercent(journey), 0);
+  const end = { x: 193, y: 346 };
+  assert.equal(applyGesture(journey, 'steamer', end), 'steam');
+  const first = journeyPercent(journey);
+  assert.ok(first > 0);
+  for (let count = 0; count < 10; count++) {
+    endStroke(journey.session);
+    applyGesture(journey, 'steamer', start);
+    applyGesture(journey, 'steamer', end);
+  }
+  assert.equal(journeyPercent(journey), first);
+  assert.equal(journey.pending, false);
+  assert.equal(sweep(journey, 'steamer'), 'complete');
+  assert.equal(journeyPercent(journey), 100);
+});
+
+test('both patches must rest before removal and only improve their own marks', () => {
+  for (const client of clients) {
+    const journey = createJourney({ ...options, seed: 4, client });
+    journey.index = 1;
+    const [left, right] = journey.session.conditions;
+    assert.equal(applyGesture(journey, 'cream', left), null);
+    assert.equal(usePatch(journey, { x: 254, y: 340 }, 0), null);
+    assert.equal(usePatch(journey, left, 0), 'patch-on');
+    assert.equal(journeyPercent(journey), 25);
+    assert.equal(usePatch(journey, left, 1000), null);
+    assert.equal(usePatch(journey, right, 2000), 'patches-rest');
+    assert.equal(journeyPercent(journey), 50);
+    assert.equal(patchStage(journey, 3300), 'rest');
+    assert.equal(usePatch(journey, right, 3300), null);
+    assert.equal(usePatch(journey, left, 3450), 'patch-off');
+    assert.equal(usePatch(journey, left, 3500), null);
+    assert.equal(left.intensity, .14);
+    assert.equal(right.intensity, 1);
+    assert.equal(journeyPercent(journey), 75);
+    assert.equal(usePatch(journey, right, 3500), 'complete');
+    assert.equal(right.intensity, .14);
+    assert.equal(journeyPercent(journey), 100);
+    assert.equal(journey.pending, true);
+  }
 });

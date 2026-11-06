@@ -1,8 +1,9 @@
-import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
-import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=04e';
-import { drawFace } from './phase04/expressions.mjs';
-import { clients } from './phase03/clients.mjs?v=04e';
-import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=04e';
+import { endStroke, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
+import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=05';
+import { drawFace } from './phase04/expressions.mjs?v=05';
+import { clients } from './phase03/clients.mjs?v=05';
+import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=05';
+import { patchStage } from './phase05/eye-patches.mjs?v=05';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#mask');
@@ -10,12 +11,15 @@ const { width, height } = canvas;
 const character = $('#character');
 const cursor = $('#tool');
 const next = $('#next');
+const steamStart = $('#steamStart');
 const cart = $('#cart');
+const hint = $('#hint');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const draw = createSkinView(canvas);
 const drawComparison = createSkinView($('#comparison'));
 
 const tools = {
+  steamer: { label: 'Vaporizzatore', icon: true, hint: 'Passa sulla fronte, sulle guance e sul mento.' },
   cleanser: { label: 'Detergente', icon: true, hint: 'Stendi la schiuma sulla pelle.' },
   brush: { label: 'Spazzolina', icon: true, hint: 'Fai piccoli cerchi dove vedi i pori.' },
   sponge: { label: 'Spugnetta', icon: true, hint: 'Passa la spugnetta sul prodotto rimasto.' },
@@ -25,6 +29,7 @@ const tools = {
   avocado: { label: 'Avocado', hint: 'Stendi la maschera all’avocado.' },
   blueberry: { label: 'Mirtillo', hint: 'Stendi la maschera al mirtillo.' },
   honey: { label: 'Miele', hint: 'Stendi la maschera al miele.' },
+  patches: { label: 'Patch occhi', icon: true, hint: 'Metti una patch sotto ogni occhio.' },
   cream: { label: 'Crema', icon: true, hint: 'Massaggia la crema sulla pelle pulita.' }
 };
 
@@ -37,10 +42,12 @@ $('#stars').textContent = stars;
 
 let client, skin, journey, selected;
 let portrait = $('#home .portrait');
-let blinkTimer, openTimer, reactionTimer, transitionTimer;
+let blinkTimer, openTimer, reactionTimer, transitionTimer, steamTimer, patchTimer;
 let feedback;
+let lastCue, bubbleTimer, mouthTimer;
 let creamTrace = [];
 let pointer = null;
+let patchOrigin;
 let handledTap;
 let frame = 0;
 let lastEffect = 0;
@@ -65,6 +72,9 @@ function resetBlink() {
 
 function show(id) {
   clearTimeout(transitionTimer);
+  clearTimeout(patchTimer);
+  dismissBubble();
+  lastCue = null;
   clearReaction();
   portrait?.classList.remove('blink');
   for (const screen of document.querySelectorAll('.screen')) {
@@ -92,6 +102,39 @@ function react(expression, message, duration = 950) {
   }, duration);
 }
 
+function stopTalking() {
+  clearInterval(mouthTimer);
+  if (!portrait?.dataset.mouth) return;
+  delete portrait.dataset.mouth;
+  drawFace(portrait);
+}
+
+function dismissBubble() {
+  clearTimeout(bubbleTimer);
+  stopTalking();
+  hint.textContent = '';
+}
+
+function say(message) {
+  dismissBubble();
+  hint.textContent = message;
+  hint.dataset.feedback = feedback?.expression ?? '';
+  bubbleTimer = setTimeout(dismissBubble, 3800);
+  if (reducedMotion.matches) return;
+  const mouth = [1, 2, 1, 2, 1, 2, 1];
+  let syllable = 0;
+  const speak = () => {
+    if (syllable === mouth.length) {
+      stopTalking();
+      return;
+    }
+    portrait.dataset.mouth = mouth[syllable++];
+    drawFace(portrait);
+  };
+  speak();
+  mouthTimer = setInterval(speak, 155);
+}
+
 function setPortrait(container, id) {
   const profile = clients[id];
   container.dataset.client = id;
@@ -110,10 +153,18 @@ function updateTool(id) {
   selected = id;
   for (const button of cart.children) button.setAttribute('aria-pressed', String(button.dataset.tool === id));
   character.classList.toggle('rinsing', id === 'sponge');
+  character.classList.toggle('steaming', id === 'steamer');
+  steamStart.setAttribute('aria-pressed', String(id === 'steamer'));
   cursor.replaceChildren();
   if (!id || id === 'sponge') return;
   if (tools[id].icon) cursor.append(toolIcon(id));
   else cursor.textContent = '✦';
+  if (id === 'steamer') {
+    const plume = document.createElement('span');
+    plume.className = 'steam-plume';
+    for (let index = 0; index < 3; index++) plume.append(document.createElement('i'));
+    cursor.prepend(plume);
+  }
 }
 
 function selectTool(id) {
@@ -124,7 +175,8 @@ function selectTool(id) {
   $('#cartToggle').focus({ preventScroll: true });
   if (!journey.pending) {
     if (acceptsTool(journey, id)) {
-      react('smile', 'Proviamo sul viso!', 1800);
+      if (id === 'patches') clearReaction();
+      else react('smile', 'Proviamo sul viso!', 1800);
     } else {
       journey.mistakes++;
       const message = journey.mistakes === 1 ? 'Mmm… proviamo qualcos’altro?' : help();
@@ -149,39 +201,54 @@ function render() {
   frame = 0;
   const now = performance.now();
   creamTrace = creamTrace.filter(point => point.expires > now);
+  const percent = journeyPercent(journey);
+  const action = currentAction(journey);
+  const steaming = action.tool === 'steamer';
+  const patches = action.tool === 'patches' && !journey.pending ? patchStage(journey, now) : null;
+  const showTargets = selected === 'patches';
+  character.classList.toggle('patch-rest', patches === 'rest');
   draw(journey.session, skin.stencil, false, client.id, creamTrace.map(point => ({
     ...point, alpha: 0.55 * (point.expires - now) / 680
-  })));
+  })), steaming ? percent / 100 : null, patches && { stage: patches, showTargets });
   if (creamTrace.length || journey.session.cells.some(cell => cell.creamUntil > now)) frame = requestAnimationFrame(render);
 
+  const patchHint = patches === 'rest' ? 'Un attimo di relax…' :
+    patches === 'remove' ? 'Ora togli tutte e due le patch!' : null;
   const step = currentStep(journey);
-  const action = currentAction(journey);
-  const percent = journeyPercent(journey);
+  steamStart.hidden = !steaming;
+  $('#cartToggle').hidden = steaming;
   const meter = $('#meter');
   $('#fill').style.width = percent + '%';
   meter.setAttribute('aria-valuenow', percent);
-  meter.setAttribute('aria-label', journey.rinseFrom ? 'Risciacquo' : 'Progresso del trattamento');
+  meter.setAttribute('aria-label', steaming ? 'Preparazione con il vapore' : journey.rinseFrom ? 'Risciacquo' : 'Progresso del trattamento');
   $('#percent').textContent = percent + '%';
   const label = client.name + ' · ' + (journey.index + 1) + '/' + journey.sequence.length;
   if ($('#step').textContent !== label) $('#step').textContent = label;
-  const title = step.icon + ' ' + step.title;
+  const patchTitle = patches === 'apply' && showTargets ? 'Metti le patch' :
+    patches === 'rest' ? 'Un po’ di relax' : patches === 'remove' ? 'Togli le patch' : null;
+  const title = step.icon + ' ' + (patchTitle ?? step.title);
   if ($('#goal').textContent !== title) $('#goal').textContent = title;
-  const message = feedback?.message ?? (journey.cleanserReady ?
+  const message = feedback?.message ?? patchHint ?? (journey.cleanserReady ?
     'Puoi finire di stendere la schiuma o risciacquare.' : selected && acceptsTool(journey, selected) ?
       tools[selected].hint : journey.mistakes >= 2 ? help() : action.prompt);
-  const hint = $('#hint');
-  hint.dataset.feedback = feedback?.expression ?? '';
-  if (hint.textContent !== message) hint.textContent = message;
+  const cue = feedback ?? message;
+  if (cue !== lastCue) {
+    lastCue = cue;
+    say(message);
+  }
   next.hidden = !(journey.rinseFrom || journey.cleanserReady) || journey.pending || selected === 'sponge';
-  canvas.setAttribute('aria-description', action.prompt);
+  canvas.setAttribute('aria-description', patchHint ?? action.prompt);
 }
 
 function stopStroke() {
   const id = pointer;
   pointer = null;
+  patchOrigin = null;
   if (id !== null && canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
   if (journey) endStroke(journey.session);
-  cursor.classList.remove('held');
+  cursor.classList.remove('held', 'emitting');
+  character.classList.remove('relaxing');
+  clearTimeout(steamTimer);
 }
 
 function move(event) {
@@ -194,24 +261,47 @@ function move(event) {
   }
 }
 
-function paintSample(event, rect) {
-  const x = Math.max(0, Math.min(width - 1, (event.clientX - rect.left) * width / rect.width));
-  const y = Math.max(0, Math.min(height - 1, (event.clientY - rect.top) * height / rect.height));
+function paintSample(event, rect, released = false) {
+  const rawX = (event.clientX - rect.left) * width / rect.width;
+  const rawY = (event.clientY - rect.top) * height / rect.height;
+  const x = Math.max(0, Math.min(width - 1, rawX));
+  const y = Math.max(0, Math.min(height - 1, rawY));
   cursor.style.left = x / width * 100 + '%';
-  cursor.style.top = y / height * 100 + '%';
-  cursor.classList.add('held');
-  const result = applyGesture(journey, selected, { x, y });
+  cursor.style.top = (selected === 'steamer' ? rawY : y) / height * 100 + '%';
+  if (selected === 'patches' && patchStage(journey) === 'remove') cursor.classList.remove('held');
+  else cursor.classList.add('held');
+  if (selected === 'steamer' && (rawX !== x || rawY !== y)) {
+    endStroke(journey.session);
+    return;
+  }
+  if (selected === 'patches' && !released) {
+    patchOrigin ??= { x, y };
+    return;
+  }
+  const point = selected === 'patches' && patchStage(journey) === 'remove' ? patchOrigin : { x, y };
+  if (!point || (selected === 'patches' && patchStage(journey) !== 'remove' && (rawX !== x || rawY !== y))) return;
+  const result = applyGesture(journey, selected, point);
   if (!result) return;
 
   const now = performance.now();
   if (selected === 'cream' && !reducedMotion.matches && now - lastEffect >= 60) {
     creamTrace.push({ x, y, expires: now + 680 });
   }
-  if (result === 'cleanser-ready') {
+  if (result === 'steam') {
+    character.classList.add('relaxing');
+    cursor.classList.add('emitting');
+    clearTimeout(steamTimer);
+    steamTimer = setTimeout(() => cursor.classList.remove('emitting'), 200);
+  } else if (result === 'patches-rest') {
+    clearReaction();
+    patchTimer = setTimeout(render, Math.max(0, journey.patchesReadyAt - performance.now()) + 16);
+  } else if (result === 'patch-on' || result === 'patch-off') {
+    sparkle(point.x, point.y, '✧');
+  } else if (result === 'cleanser-ready') {
     react('smile', 'Puoi ancora stendere la schiuma!', 1800);
   } else if (result === 'rinse' || result === 'complete') {
     stopStroke();
-    react('smile', result === 'rinse' ? 'Fatto! Ora risciacquiamo.' : 'Che bello! ✦');
+    react('smile', result === 'rinse' ? 'Fatto! Ora risciacquiamo.' : selected === 'steamer' ? 'Ora sono pronta! ✦' : 'Che bello! ✦');
     sparkle(x, y, '✧ ✦', true);
     if (result === 'complete') transitionTimer = setTimeout(nextStep, 780);
   } else if (now >= nextReaction) {
@@ -279,12 +369,13 @@ function start(id) {
   updateTool(undefined);
   character.querySelectorAll('.particle').forEach(particle => particle.remove());
   setPortrait($('#spa .portrait'), id);
+  $('#spa .spa-eyelids').src = 'assets/' + client.eyelids;
   show('spa');
   render();
   setCart(false);
 }
 
-for (const id of SPA_TOOLS) {
+for (const id of [...SPA_TOOLS, 'patches']) {
   const { label, icon } = tools[id];
   const button = document.createElement('button');
   button.type = 'button';
@@ -314,16 +405,35 @@ for (const button of document.querySelectorAll('.client')) {
   });
 }
 
-canvas.addEventListener('pointerdown', event => {
-  if (!selected || !cart.hidden || pointer !== null || event.button !== 0) return;
+function beginStroke(event) {
   pointer = event.pointerId;
   canvas.setPointerCapture(pointer);
   move(event);
+}
+
+steamStart.prepend(toolIcon('steamer'));
+steamStart.addEventListener('pointerdown', event => {
+  if (event.button !== 0 || pointer !== null || journey.pending) return;
+  updateTool('steamer');
+  render();
+  // Transfer capture so one continuous drag can start on the device in the tray.
+  beginStroke(event);
+});
+bindAction(steamStart, () => {
+  if (journey.pending) return;
+  updateTool('steamer');
+  render();
+});
+
+canvas.addEventListener('pointerdown', event => {
+  if (!selected || !cart.hidden || pointer !== null || event.button !== 0) return;
+  beginStroke(event);
 });
 canvas.addEventListener('pointermove', move);
 canvas.addEventListener('pointerup', event => {
   if (event.pointerId !== pointer) return;
-  move(event);
+  if (selected === 'patches') paintSample(event, canvas.getBoundingClientRect(), true);
+  else move(event);
   stopStroke();
 });
 for (const type of ['pointercancel', 'lostpointercapture']) {
@@ -340,6 +450,9 @@ function goHome() {
 }
 for (const selector of ['#chooseHome', '#back', '#goHome']) bindAction($(selector), goHome);
 bindAction($('#cartToggle'), () => setCart(cart.hidden));
+bindAction($('#repeatHint'), () => {
+  if (lastCue) say(lastCue.message ?? lastCue);
+});
 bindAction($('#before'), () => compare(true));
 bindAction($('#after'), () => compare(false));
 bindAction(next, () => { if (!next.hidden) selectTool('sponge'); });
@@ -351,7 +464,7 @@ function toolIcon(id) {
   icon.setAttribute('viewBox', '0 0 32 32');
   icon.setAttribute('aria-hidden', 'true');
   const use = document.createElementNS(namespace, 'use');
-  use.setAttribute('href', 'assets/spa-tools.svg#' + id);
+  use.setAttribute('href', 'assets/spa-tools.svg?v=05#' + id);
   icon.append(use);
   return icon;
 }
@@ -390,5 +503,8 @@ document.addEventListener('click', event => {
 }, true);
 
 document.addEventListener('visibilitychange', resetBlink);
-reducedMotion.addEventListener('change', resetBlink);
+reducedMotion.addEventListener('change', () => {
+  resetBlink();
+  if (reducedMotion.matches) stopTalking();
+});
 scheduleBlink();

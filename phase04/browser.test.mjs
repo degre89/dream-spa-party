@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { test } from 'node:test';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
-const seeds = [5, 6, 7, 0, 9];
+const seeds = [5, 6, 7, 0, 4, 8, 9, 0];
 const baseline = process.env.SPA_BASELINE === '1';
 const baseURL = process.env.SPA_URL || 'http://127.0.0.1:8000/';
 const devices = [[320, 568, true], [412, 915, true], [1280, 720, false]];
@@ -29,6 +29,7 @@ for (const [width, height, touch] of devices) {
     const cdp = touch && await context.newCDPSession(page);
     const errors = [];
     const cleanserEvidence = [];
+    const spaEvidence = [];
     page.on('pageerror', error => errors.push(error.message));
     page.on('response', response => {
       if (response.status() >= 400 && !response.url().endsWith('/favicon.ico')) {
@@ -76,23 +77,32 @@ for (const [width, height, touch] of devices) {
       assert.ok(await element('#cart').isHidden());
     }
 
-    async function stroke(points) {
-      const box = await element('#mask').boundingBox();
-      const mapped = points.map(([x, y]) => ({
-        x: Math.round(box.x + x * box.width / 512),
-        y: Math.round(box.y + y * box.height / 640)
-      }));
-      const [first, ...rest] = mapped;
+    async function gesture(points, whileHeld) {
+      const [first, ...rest] = points;
       if (touch) {
         await dispatch('touchStart', first);
         for (const point of rest) await dispatch('touchMove', point);
+        if (whileHeld) await whileHeld();
         await dispatch('touchEnd');
       } else {
         await page.mouse.move(first.x, first.y);
         await page.mouse.down();
         for (const { x, y } of rest) await page.mouse.move(x, y);
+        if (whileHeld) await whileHeld();
         await page.mouse.up();
       }
+    }
+
+    async function facePoints(points) {
+      const box = await element('#mask').boundingBox();
+      return points.map(([x, y]) => ({
+        x: Math.round(box.x + x * box.width / 512),
+        y: Math.round(box.y + y * box.height / 640)
+      }));
+    }
+
+    async function stroke(points, whileHeld) {
+      await gesture(await facePoints(points), whileHeld);
     }
 
     async function pixels(points) {
@@ -143,7 +153,7 @@ for (const [width, height, touch] of devices) {
     async function fullCart() {
       await activate('#cartToggle');
       const buttons = element('#cart button');
-      assert.equal(await buttons.count(), 10);
+      assert.equal(await buttons.count(), baseline ? 10 : 11);
       for (const button of await buttons.all()) assert.ok(await button.isEnabled() && await button.isVisible());
     }
 
@@ -161,6 +171,72 @@ for (const [width, height, touch] of devices) {
       assert.ok(await predicate(), 'the gestures can complete the current action');
     }
 
+    async function prepare(id, positions, record) {
+      const goal = element('#goal');
+      const bubble = element('#hint');
+      const face = element('#spa .portrait');
+      await goal.filter({ hasText: 'Nuvole di vapore' }).waitFor();
+      await bubble.filter({ hasText: 'Trascina il vaporizzatore' }).waitFor();
+      const box = await bubble.boundingBox();
+      const skin = await element('#mask').boundingBox();
+      assert.ok(box.y + box.height + 8 < skin.y + skin.height * .23, 'the bubble does not overlap the portrait');
+      assert.ok(await bubble.evaluate(node => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const text = range.getBoundingClientRect();
+        const panel = node.getBoundingClientRect();
+        return text.height > 0 && text.left >= panel.left && text.right <= panel.right &&
+          text.top >= panel.top && text.bottom <= panel.bottom;
+      }), 'all lines of bubble text fit inside the panel');
+      if (record && id === 'sofia') {
+        await face.locator('xpath=self::*[@data-mouth="1"]').waitFor();
+        const first = await canvasPNG('#spa .reaction-face');
+        await face.locator('xpath=self::*[@data-mouth="2"]').waitFor();
+        assert.notEqual(await canvasPNG('#spa .reaction-face'), first);
+        assert.equal(await element('#spa img.hero').evaluate(image => getComputedStyle(image).opacity), '0');
+        await shot('03-nuvoletta-parlante');
+        await face.locator('xpath=self::*[not(@data-mouth)]').waitFor();
+        await bubble.waitFor({ state: 'hidden' });
+        await activate('#repeatHint');
+        await bubble.waitFor();
+      }
+
+      const quiet = await pixels(positions);
+      const steam = element('#steamStart');
+      const button = await steam.boundingBox();
+      const tray = { x: Math.round(button.x + button.width / 2), y: Math.round(button.y + button.height / 2) };
+      const cheek = [[159, 350], [184, 352], [196, 350]];
+      if (record && id === 'sofia') {
+        await activate('#steamStart');
+        assert.equal(await steam.getAttribute('aria-pressed'), 'true');
+        await stroke([cheek[0]], async () => {
+          await page.waitForTimeout(270);
+          assert.equal(await percent(), 0, 'stationary device does not prepare the skin');
+          assert.ok(await element('#tool:not(.emitting)').isVisible());
+        });
+      }
+      await gesture([tray, ...await facePoints(cheek)], async () => {
+        assert.equal(await steam.getAttribute('aria-pressed'), 'true');
+        await element('#tool.held.emitting').waitFor();
+        await element('#character.relaxing').waitFor();
+        await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.steam-plume')).opacity) > .3);
+        if (record) await shot('steam-' + id);
+      });
+      const firstPass = await percent();
+      assert.ok(firstPass > 0 && firstPass < 100);
+      if (record) {
+        for (let attempt = 0; attempt < 8; attempt++) await stroke(cheek);
+        assert.equal(await percent(), firstPass, 'one cheek stops adding steam coverage');
+      }
+      const partial = await pixels(positions);
+      assert.ok(partial.some((rgba, index) => rgba[3] > quiet[index][3] + 5), 'conditions gradually appear');
+      await gestureUntil(async () => (await steam.isHidden()) || await percent() === 100);
+      await steam.waitFor({ state: 'hidden' });
+      const visible = await pixels(positions);
+      assert.ok(visible.some((rgba, index) => rgba[3] > partial[index][3] + 10));
+      if (record) spaEvidence.push({ client: id, singleZoneSteam: firstPass, initialMarks: quiet, partialMarks: partial, revealedMarks: visible });
+    }
+
     let failed = false;
     try {
       await page.goto(baseURL);
@@ -174,9 +250,11 @@ for (const [width, height, touch] of devices) {
 
       let index = 0;
       for (const [id, profile] of Object.entries(clients)) {
-        const { sequence, conditions, samples, geometry } = await fixture(id, seeds[index], !index || width === 320);
+        const { sequence: route, conditions, samples, geometry } = await fixture(id, seeds[index], !index || width === 320);
+        const sequence = baseline ? route : route.slice(1);
+        const offset = baseline ? 0 : 1;
         if (samples.length) {
-          assert.equal(new Set(samples.map(trial => trial.sequence)).size, 9);
+          assert.equal(new Set(samples.map(trial => trial.sequence)).size, baseline ? 9 : 12);
           assert.ok(samples.every(trial => trial.count > 0));
         }
         if (!baseline) {
@@ -189,9 +267,13 @@ for (const [width, height, touch] of devices) {
         await element(`#spa.on .portrait[data-client="${id}"]`).waitFor();
         await viewportFits();
         assert.ok(await element('#spa img.hero').evaluate(async image => { await image.decode(); return image.naturalWidth > 0; }));
-        const initial = await canvasPNG('#mask');
         const positions = conditions.map(({ x, y, radius }) => kind === 'pores' ?
           [Math.round(x - .48 * radius), Math.round(y - .21 * radius)] : [x, y]);
+        if (!baseline) {
+          await prepare(id, positions, true);
+          await element('#spa .portrait:not([data-mouth])').waitFor();
+        }
+        const initial = await canvasPNG('#mask');
         const visible = await pixels(positions);
         assert.ok(visible.every(pixel => pixel[3] > 145), 'marks stand out in the skin layer');
         assert.ok((await pixels(profile.protected)).every(pixel => pixel[3] === 0));
@@ -234,7 +316,7 @@ for (const [width, height, touch] of devices) {
         for (const { x, y } of conditions) {
           for (let pass = 0; pass < 4; pass++) await stroke([[x - 6, y], [x + 6, y], [x - 6, y]]);
         }
-        await element('#step').filter({ hasText: '2/' + sequence.length }).waitFor();
+        await element('#step').filter({ hasText: (2 + offset) + '/' + route.length }).waitFor();
         assert.ok((await pixels(positions)).every(pixel => pixel[3] <= 40), 'only subtle treatment glow remains between phases');
         if (index === 0) await shot('08-fase-successiva');
 
@@ -320,7 +402,7 @@ for (const [width, height, touch] of devices) {
             await gestureUntil(phaseFinished);
           }
           if (phase < sequence.length - 1) {
-            await element('#step').filter({ hasText: (phase + 2) + '/' + sequence.length }).waitFor();
+            await element('#step').filter({ hasText: (phase + 2 + offset) + '/' + route.length }).waitFor();
           }
         }
 
@@ -340,6 +422,55 @@ for (const [width, height, touch] of devices) {
         await activate('#again');
         await element('#choose.on').waitFor();
         index++;
+      }
+
+      if (!baseline) {
+        for (const [index, id] of Object.keys(clients).entries()) {
+          const { sequence, conditions } = await fixture(id, seeds[index + 3]);
+          assert.equal(sequence[1], 'darkCircles');
+          const points = conditions.map(({ x, y }) => [x, y - 5]);
+          await activate(`#choose [data-client="${id}"]`);
+          await prepare(id, points, false);
+          const shadows = await pixels(points);
+          assert.ok(shadows.every(pixel => pixel[3] > 80));
+          await fullCart();
+          await pick('gel');
+          await stroke([[conditions[0].x, conditions[0].y]]);
+          assert.equal(await percent(), 0, 'another product cannot treat the eye shadows');
+          await pick('patches');
+          const eyes = clients[id].protected.slice(0, 2);
+          await stroke([eyes[0]]);
+          assert.equal(await percent(), 0, 'the patch cannot be placed over the eye');
+          const [left, right] = conditions.map(({ x, y }) => [x, y]);
+          await stroke([[255, 420], left]);
+          await waitForFrame();
+          assert.equal(await percent(), 25);
+          await stroke([left]);
+          assert.equal(await percent(), 25, 'the same patch cannot count twice');
+          await stroke([[255, 420], right]);
+          await element('#character.patch-rest').waitFor();
+          assert.equal(await percent(), 50);
+          const placed = await pixels([left, right, ...eyes]);
+          assert.ok(placed.slice(0, 2).every(pixel => pixel[3] > 225));
+          assert.ok(placed.slice(2).every(pixel => pixel[3] === 0), 'both eyes stay uncovered');
+          await shot('patch-rest-' + id);
+          await element('#goal').filter({ hasText: 'Togli le patch' }).waitFor();
+          await shot('patch-removal-' + id);
+          await stroke([left, [250, 423]]);
+          await waitForFrame();
+          assert.equal(await percent(), 75);
+          const [firstRemoved] = await pixels(points);
+          assert.ok(firstRemoved[3] < shadows[0][3] - 35);
+          await stroke([right]);
+          await waitForFrame();
+          const improved = await pixels(points);
+          assert.ok(improved.every((pixel, i) => pixel[3] < shadows[i][3] - 35));
+          await shot('patch-after-' + id);
+          await element('#step').filter({ hasText: '3/' + sequence.length }).waitFor();
+          spaEvidence.push({ client: id, shadows, placed, improved });
+          await activate('#back');
+          await activate('#play');
+        }
       }
 
       await activate('#choose [data-client="sofia"]');
@@ -362,6 +493,8 @@ for (const [width, height, touch] of devices) {
       await writeFile(dir + '/cleanser-coverage.json', JSON.stringify(cleanserEvidence, null, 2));
       await writeFile(dir + '/browser-errors.json', JSON.stringify(errors, null, 2));
       await context.tracing.stop(failed ? { path: dir + '/trace.zip' } : {});
+      await writeFile(dir + '/spa-experience.json', JSON.stringify(spaEvidence, null, 2));
+      await context.close();
       await browser.close();
     }
   });

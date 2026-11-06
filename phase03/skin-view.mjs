@@ -1,3 +1,5 @@
+import { drawEyePatches, drawEyeShadow } from '../phase05/eye-patches.mjs?v=05';
+
 // Paint the state model's cells, then clip every layer with the client's stencil.
 const materials = {
   strawberry: ['#ed619a', 0.85],
@@ -99,12 +101,12 @@ export function createSkinView(canvas) {
   const small = grid.getContext('2d');
   const view = canvas.getContext('2d');
 
-  return (session, stencil, before = false, client = "sofia", creamTrace = []) => {
+  return (session, stencil, before = false, client = "sofia", creamTrace = [], preparation = null, patches = null) => {
     view.clearRect(0, 0, width, height);
     if (!before) {
       small.clearRect(0, 0, grid.width, grid.height);
       const foam = new Path2D();
-      for (const { x, y, product, clean, glow, hydration, area, creamUntil = 0 } of session.cells) {
+      for (const { x, y, product, clean, glow, hydration, area, prepared, creamUntil = 0 } of session.cells) {
         if (product === 'foam') {
           // Overlap neighboring treated cells, then composite once to keep the
           // opacity uniform. The same cells drive progress and rinsing.
@@ -114,7 +116,7 @@ export function createSkinView(canvas) {
           continue;
         }
         const material = materials[product];
-        const light = Math.max(glow, hydration * 0.7, clean * 0.4);
+        const light = Math.max(glow, hydration * 0.7, clean * 0.4, preparation !== null && prepared ? .62 : 0);
         const creamAlpha = Math.max(0, Math.min(1, (creamUntil - performance.now()) / 1500));
         if (!material && !light) continue;
         small.fillStyle = creamAlpha > 0 ? '#fff8e8' : material?.[0] ?? '#fff0d8';
@@ -129,8 +131,10 @@ export function createSkinView(canvas) {
       view.globalAlpha = 1;
     }
     for (const condition of session.conditions) {
-      const intensity = before ? condition.initial : condition.intensity;
-      if (intensity > 0) conditionMark(view, { ...condition, intensity }, skinPalettes[client]);
+      const intensity = before ? condition.initial : condition.intensity * (preparation === null ? 1 : .09 + .91 * preparation);
+      if (intensity <= 0) continue;
+      if (condition.kind === 'darkCircles') drawEyeShadow(view, { ...condition, intensity }, client);
+      else conditionMark(view, { ...condition, intensity }, skinPalettes[client]);
     }
     if (!before) {
       for (const { x, y, product } of session.cells) {
@@ -148,6 +152,7 @@ export function createSkinView(canvas) {
       view.globalAlpha = alpha;
       halo(view, x, y, 25, '#fff8e6', '#fff8e600');
     }
+    if (patches) drawEyePatches(view, session.conditions, patches.stage, patches.showTargets);
     view.globalAlpha = 1;
     view.globalCompositeOperation = 'destination-in';
     view.drawImage(stencil, 0, 0);
