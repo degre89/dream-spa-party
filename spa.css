@@ -112,7 +112,7 @@ footer p { margin: 0 0 5px; }
 }
 .patch-rest .spa-eyelids { opacity: 1; }
 
-.dialogue { position: relative; z-index: 1; transform: translateY(clamp(0px, (100dvh - 660px) * .21, 55px)); display: grid; align-items: center; width: 100%; min-height: 48px; padding: 0 41px 0 3px; }
+.dialogue { position: relative; z-index: 1; transform: translateY(clamp(0px, (100dvh - 660px) * .21, 55px)); display: grid; align-items: center; width: 100%; min-height: 52px; padding: 0 41px 0 3px; }
 #hint { position: relative; justify-self: center; max-width: 100%; margin: 0; padding: 6px 10px; border: 2px solid #fff; border-radius: 14px; background: #fff6fc; box-shadow: 0 3px 8px #6a245940; font-size: clamp(.79rem, 3.4vw, .95rem); line-height: 1.15; text-align: center; }
 #hint:empty { visibility: hidden; }
 #hint:not(:empty)::after { content: ""; position: absolute; left: 58%; top: 100%; width: 8px; height: 8px; transform: translateY(-4px) rotate(45deg); border: solid white; border-width: 0 2px 2px 0; background: #fff6fc; }

@@ -128,8 +128,9 @@ for (const [width, height, touch] of devices) {
         pointer.y < box.y || pointer.y > box.y + box.height, tool + ' sits clear of the contact point');
       const face = await element('#mask').boundingBox();
       const position = await icon.evaluate(node => ({ x: parseFloat(node.style.left), y: parseFloat(node.style.top) }));
-      assert.ok(Math.abs(face.x + face.width * position.x / 100 - pointer.x) <= 1);
-      assert.ok(Math.abs(face.y + face.height * position.y / 100 - pointer.y) <= 1);
+      const dx = face.x + face.width * position.x / 100 - pointer.x;
+      const dy = face.y + face.height * position.y / 100 - pointer.y;
+      assert.ok(Math.abs(dx) <= 1 && Math.abs(dy) <= 1, `${id} ${tool} input drift: ${dx}, ${dy}`);
       refinementEvidence.push({ client: id, tool, size: [box.width, box.height], pointer, box });
       if (record) await shot('tool-' + tool + '-' + id);
     }
