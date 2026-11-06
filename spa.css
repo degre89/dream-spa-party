@@ -66,7 +66,6 @@ footer p { margin: 0 0 5px; }
 .treatment-controls { position: relative; }
 .treatment-actions, .compare-controls { display: flex; justify-content: center; gap: 6px; }
 .treatment-actions button { flex: 1; min-width: 0; padding-inline: 6px; }
-#hint { min-height: 2.4em; line-height: 1.2; font-size: .85rem; }
 #cart { position: absolute; z-index: 2; inset: auto -2px calc(100% + 7px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; background: #fff1fa; border: 2px solid white; border-radius: 18px; padding: 7px; box-shadow: 0 5px 18px #5b225977; }
 #cart[hidden] { display: none; }
 .spa-tool { display: grid; justify-items: center; align-content: center; gap: 2px; color: #66244f; border: 2px solid transparent; border-radius: 13px; background: #f8e0f0; padding: 2px 0; min-height: 45px; font-size: .68rem; }
@@ -84,9 +83,6 @@ footer p { margin: 0 0 5px; }
 .spa-tool { min-width: 0; font-size: .65rem; }
 #tool .icon { display: block; width: clamp(22px, 7vw, 37px); height: auto; }
 #goal { font-size: clamp(1.5rem, 6.5vw, 2.2rem); }
-#hint { display: grid; align-items: center; font-size: clamp(.88rem, 3.4vw, 1rem); }
-#hint[data-feedback="puzzled"] { color: #774376; }
-#hint[data-feedback="smile"] { color: #236b53; }
 #character .celebration { color: #fff1a6; font-size: clamp(1.15rem, 5vw, 2rem); }
 
 .treatment-actions [hidden] { display: none; }
@@ -111,3 +107,12 @@ footer p { margin: 0 0 5px; }
   .steam-plume i, .spa-eyelids { animation: none; transition: none; }
 }
 .patch-rest .spa-eyelids { opacity: 1; }
+
+.dialogue { position: relative; display: grid; align-items: center; width: 100%; min-height: 48px; padding: 0 41px 0 3px; }
+#hint { position: relative; justify-self: center; max-width: 100%; margin: 0; padding: 6px 10px; border: 2px solid #fff; border-radius: 14px; background: #fff6fc; box-shadow: 0 3px 8px #6a245940; font-size: clamp(.79rem, 3.4vw, .95rem); line-height: 1.15; text-align: center; }
+#hint:empty { visibility: hidden; }
+#hint:not(:empty)::after { content: ""; position: absolute; left: 58%; top: 100%; width: 8px; height: 8px; transform: translateY(-4px) rotate(45deg); border: solid white; border-width: 0 2px 2px 0; background: #fff6fc; }
+#hint[data-feedback="puzzled"] { color: #774376; }
+#hint[data-feedback="smile"] { color: #236b53; }
+#repeatHint { position: absolute; right: 0; top: 50%; width: 40px; height: 44px; transform: translateY(-50%); background: transparent; border: 0; color: #fff; font-size: 1rem; }
+#repeatHint::before { content: ""; position: absolute; inset: 8px 5px; z-index: -1; border: 1px solid #fff; border-radius: 50%; background: #8b3c79; }

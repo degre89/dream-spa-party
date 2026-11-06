@@ -13,6 +13,7 @@ const width = 768;
 const height = 960;
 const scale = 1.5;
 const cache = new Map();
+const mouthFrames = new Map();
 
 function taper(distance, inner, margin) {
   const t = Math.min(1, Math.max(0, (Math.abs(distance) - inner) / margin));
@@ -68,24 +69,60 @@ function drawExpression(context, original, id, happy) {
   return result;
 }
 
+// Replace the mouth and nearby skin with a small resampled crop of the
+// active expression. The portrait and its original mouth are never stacked.
+function speakingMouth(context, original, id, frame) {
+  const [cx, cy, rx, ry] = landmarks[id].mouth;
+  const left = Math.floor((cx - rx - 17) * scale);
+  const top = Math.floor((cy - ry - 15) * scale);
+  const patch = context.createImageData(Math.ceil((rx + 17) * 2 * scale), Math.ceil((ry + 15) * 2 * scale));
+  for (let row = 0; row < patch.height; row++) {
+    const y = (top + row) / scale - cy;
+    for (let col = 0; col < patch.width; col++) {
+      const x = (left + col) / scale - cx;
+      const weight = taper(x, rx * .72, rx * .28 + 16) * taper(y, ry * .7, ry * .3 + 14);
+      const opening = frame === 1 ? .18 : .40;
+      copySample(original.data, patch.data, (row * patch.width + col) * 4,
+        left + col + x * .06 * frame * weight * scale,
+        top + row - (y * opening + frame) * weight * scale);
+    }
+  }
+  return { patch, left, top };
+}
+
 export function drawFace(portrait) {
   const face = portrait.querySelector('.reaction-face');
   if (!face) return;
   const mood = portrait.classList.contains('smile') ? 'happy' :
     portrait.classList.contains('puzzled') ? 'sad' : '';
-  face.hidden = true;
-  delete portrait.dataset.face;
+  const frame = Number(portrait.dataset.mouth || 0);
   const image = portrait.querySelector('.hero');
-  if (!mood || !image.complete || !image.naturalWidth) return;
   const id = portrait.dataset.client;
-  const key = id + '/' + mood;
+  if ((!mood && !frame) || !image.complete || !image.naturalWidth || image.currentSrc !== image.src) {
+    face.hidden = true;
+    delete portrait.dataset.face;
+    return;
+  }
+
+  const key = id + '/' + (mood || 'neutral');
+  const originalKey = id + '/neutral';
   const context = face.getContext('2d');
-  if (!cache.has(key)) {
+  if (!cache.has(originalKey)) {
     context.clearRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
-    cache.set(key, drawExpression(context, context.getImageData(0, 0, width, height), id, mood === 'happy'));
+    cache.set(originalKey, context.getImageData(0, 0, width, height));
   }
-  context.putImageData(cache.get(key), 0, 0);
+  if (!cache.has(key)) {
+    cache.set(key, drawExpression(context, cache.get(originalKey), id, mood === 'happy'));
+  }
+  const base = cache.get(key);
+  context.putImageData(base, 0, 0);
+  if (frame) {
+    const frameKey = key + '/' + frame;
+    if (!mouthFrames.has(frameKey)) mouthFrames.set(frameKey, speakingMouth(context, base, id, frame));
+    const { patch, left, top } = mouthFrames.get(frameKey);
+    context.putImageData(patch, left, top);
+  }
   face.hidden = false;
-  portrait.dataset.face = mood;
+  portrait.dataset.face = mood || 'neutral';
 }

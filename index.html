@@ -31,6 +31,10 @@
   <section class="screen" id="spa">
     <header class="top"><button class="pill" id="back">⌂ Home</button><span class="pill" id="step"></span></header>
     <h2 id="goal">Momento Spa</h2>
+    <div class="dialogue">
+      <p id="hint" role="status" aria-atomic="true"></p>
+      <button id="repeatHint" type="button" aria-label="Ripeti il suggerimento">?</button>
+    </div>
     <div class="stage">
       <div id="character">
         <div class="portrait"><img class="hero" alt="" draggable="false"><img class="expression spa-eyelids" alt="" draggable="false"><canvas class="reaction-face" width="768" height="960" aria-hidden="true" hidden></canvas></div>
@@ -39,7 +43,6 @@
       </div>
     </div>
     <footer class="treatment-controls">
-      <p id="hint" role="status"></p>
       <div class="readout">
         <div id="meter" role="progressbar" aria-label="Progresso del trattamento" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="fill"></div></div>
         <output id="percent">0%</output>
