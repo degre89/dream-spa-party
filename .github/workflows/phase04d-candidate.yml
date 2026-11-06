@@ -8,6 +8,12 @@ jobs:
   chromium:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport: [320x568, 412x915, 1280x720]
+    env:
+      SPA_VIEWPORT: ${{ matrix.viewport }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,6 +45,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase04d-before-after
+          name: dream-spa-phase04d-before-after-${{ matrix.viewport }}
           path: test-results/
           if-no-files-found: error

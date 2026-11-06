@@ -17,13 +17,14 @@ const masks = ['strawberry', 'avocado', 'blueberry', 'honey'];
 const correctTools = { spot: 'gel', redness: 'serum', pores: 'brush', cleanse: 'cleanser', cream: 'cream' };
 
 for (const [width, height, touch] of devices) {
+  if (process.env.SPA_VIEWPORT && process.env.SPA_VIEWPORT !== `${width}x${height}`) continue;
   test(`${width}×${height} · ${touch ? 'touch' : 'mouse'} · three complete sessions`, { timeout: 230000 }, async () => {
     const dir = `test-results/${baseline ? 'before/' : ''}${width}x${height}`;
     await mkdir(dir, { recursive: true });
     const browser = await chromium.launch(process.env.SPA_CHROME_PATH ?
       { executablePath: process.env.SPA_CHROME_PATH, args: ['--no-sandbox'] } : { channel: 'chrome' });
     const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch });
-    await context.tracing.start({ screenshots: true, snapshots: true });
+    await context.tracing.start({ snapshots: true });
     const page = await context.newPage();
     const cdp = touch && await context.newCDPSession(page);
     const errors = [];
@@ -234,15 +235,22 @@ for (const [width, height, touch] of devices) {
 
         for (let phase = 1; phase < sequence.length; phase++) {
           const step = sequence[phase];
+          const phaseLabel = await element('#step').innerText();
+          const phaseFinished = () => page.evaluate(label =>
+            document.querySelector('#done').classList.contains('on') ||
+            document.querySelector('#step').textContent !== label ||
+            document.querySelector('#meter').getAttribute('aria-valuenow') === '100', phaseLabel);
           await fullCart();
           const mask = masks[(index + devices.findIndex(device => device[0] === width)) % masks.length];
           await pick(step === 'mask' ? mask : correctTools[step]);
           if (step === 'cleanse') {
             const cheek = [[155, 350], [190, 350]];
             await stroke(cheek);
+            await waitForFrame();
             const cheekPercent = await percent();
             for (let repeat = 0; repeat < 10; repeat++) await stroke(cheek);
             assert.ok(cheekPercent > 0 && cheekPercent < 100);
+            await waitForFrame();
             assert.equal(await percent(), cheekPercent, 'repeat passes add no new coverage');
             assert.ok(await element('#next').isHidden(), 'one cheek cannot unlock rinsing');
             const untouched = await pixels([[340, 350], [256, profile.tracks[0]]]);
@@ -273,7 +281,7 @@ for (const [width, height, touch] of devices) {
             const [absorbed] = await pixels([profile.forehead]);
             assert.ok(fresh[3] > absorbed[3] + 25, `cream alpha falls as it absorbs: ${fresh[3]} → ${absorbed[3]}`);
             assert.equal(await percent(), creamPercent, 'absorbing cream keeps spatial progress');
-            await gestureUntil(async () => (await percent()) === 100, 5);
+            await gestureUntil(phaseFinished, 5);
           } else {
             await gestureUntil(() => element('#next').isVisible());
             const [forehead, ...protectedPixels] = await pixels([profile.forehead, ...profile.protected]);
@@ -294,7 +302,7 @@ for (const [width, height, touch] of devices) {
             const [rinsed] = await pixels([profile.forehead]);
             assert.ok(rinsed[3] < forehead[3], 'sponge removes product');
             if (step === 'mask' && index === 0) await shot('10-risciacquo-parziale');
-            await gestureUntil(async () => (await percent()) === 100);
+            await gestureUntil(phaseFinished);
           }
           if (phase < sequence.length - 1) {
             await element('#step').filter({ hasText: (phase + 2) + '/' + sequence.length }).waitFor();
