@@ -66,6 +66,7 @@ footer p { margin: 0 0 5px; }
 .treatment-actions, .compare-controls { display: flex; justify-content: center; gap: 6px; }
 .treatment-actions button { flex: 1; min-width: 0; padding-inline: 6px; }
 #cart { position: absolute; z-index: 2; inset: auto -2px calc(100% + 7px); background: #fff1fa; border: 2px solid white; border-radius: 18px; padding: 7px; box-shadow: 0 5px 18px #5b225977; }
+#cart button { -webkit-tap-highlight-color: transparent; user-select: none; }
 .tool-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .tool-grid[hidden] { display: none; }
 #maskBack { display: block; min-height: 44px; margin: 0 0 2px; padding: 0 8px; border: 0; border-radius: 12px; color: #66244f; background: transparent; font-size: .82rem; }

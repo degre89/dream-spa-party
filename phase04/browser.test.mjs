@@ -403,7 +403,7 @@ for (const [width, height, touch] of devices) {
           }
           const selected = step === 'mask' ? mask : correctTools[step];
           await pick(selected);
-          if (!baseline) {
+          if (step === 'mask' && !baseline) {
             const [x, y] = profile.forehead;
             await stroke([[x - 6, y], [x, y]], () => checkCursor(id, selected, [x, y], index === 0));
             await waitForFrame();
@@ -411,8 +411,9 @@ for (const [width, height, touch] of devices) {
           }
           if (step === 'cleanse') {
             const cheek = [[155, 350], [190, 350]];
-            await stroke(cheek);
+            await stroke(cheek, baseline ? undefined : () => checkCursor(id, selected, cheek.at(-1), index === 0));
             await waitForFrame();
+            assert.ok((await pixels([cheek.at(-1)]))[0][3] > 0, 'foam stays aligned with the real contact');
             const cheekPercent = await percent();
             for (let repeat = 0; repeat < 10; repeat++) await stroke(cheek);
             assert.ok(cheekPercent > 0 && cheekPercent < 100);
@@ -436,7 +437,9 @@ for (const [width, height, touch] of devices) {
             const cheekPercent = await percent();
             assert.ok(cheekPercent > 0 && cheekPercent < 100, `one cheek must progress without completing: ${cheekPercent}%`);
             await shot('08-crema-una-guancia-' + id);
-            await stroke([[218, profile.forehead[1]], [278, profile.forehead[1]]]);
+            const last = [278, profile.forehead[1]];
+            await stroke([[218, profile.forehead[1]], last], baseline ? undefined :
+              () => checkCursor(id, selected, last, true));
             await waitForFrame();
             const creamPercent = await percent();
             assert.ok(creamPercent > 0 && creamPercent < 100, `cream after cheek and forehead: ${creamPercent}%`);
