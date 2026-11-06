@@ -226,13 +226,33 @@ for (const [width, height, touch] of devices) {
           text.top >= panel.top && text.bottom <= panel.bottom;
       }), 'all lines of bubble text fit inside the panel');
       if (record && id === 'sofia') {
-        await face.locator('xpath=self::*[@data-mouth="1"]').waitFor();
-        const first = await canvasPNG('#spa .reaction-face');
-        await face.locator('xpath=self::*[@data-mouth="2"]').waitFor();
-        assert.notEqual(await canvasPNG('#spa .reaction-face'), first);
-        assert.equal(await element('#spa img.hero').evaluate(image => getComputedStyle(image).opacity), '0');
+        await bubble.waitFor({ state: 'hidden' });
+        await activate('#repeatHint');
+        // Read the frame number and its pixels in the same browser task.
+        const frames = await face.evaluate(portrait => new Promise(resolve => {
+          const canvas = portrait.querySelector('.reaction-face');
+          const context = canvas.getContext('2d');
+          const samples = new Map();
+          const deadline = performance.now() + 2000;
+          function sample() {
+            const frame = portrait.dataset.mouth;
+            if (frame && !canvas.hidden && !samples.has(frame)) {
+              samples.set(frame, context.getImageData(0, 0, canvas.width, canvas.height).data);
+            }
+            if (samples.size === 2 || performance.now() >= deadline) {
+              resolve({
+                changed: samples.size === 2 && samples.get('1').some((pixel, i) => pixel !== samples.get('2')[i]),
+                heroHidden: getComputedStyle(portrait.querySelector('img.hero')).opacity === '0'
+              });
+              return;
+            }
+            requestAnimationFrame(sample);
+          }
+          sample();
+        }));
+        assert.ok(frames.changed, 'both speaking frames change the portrait pixels');
+        assert.ok(frames.heroHidden, 'the speaking canvas replaces the original portrait');
         await shot('03-nuvoletta-parlante');
-        await face.locator('xpath=self::*[not(@data-mouth)]').waitFor();
         await bubble.waitFor({ state: 'hidden' });
         await activate('#repeatHint');
         await bubble.waitFor();

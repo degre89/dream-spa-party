@@ -59,7 +59,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       await balance(30);
       assert.equal(await el('[data-shop-item="martina"]').count(), 0);
       assert.equal(await page.evaluate(async () => {
-        const { createWallet, CLIENT_PRICE } = await import('/phase06/wallet.mjs');
+        const { createWallet, CLIENT_PRICE } = await import(new URL('phase06/wallet.mjs', document.baseURI));
         return createWallet().buy({ kind: 'clients', id: 'martina', price: CLIENT_PRICE });
       }), 'owned');
       await el('#shopStatus').filter({ hasText: 'Martina' }).waitFor();
@@ -93,7 +93,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       assert.equal((await saved()).earned, 120);
       await at('2026-11-06T21:30:00Z');
       assert.equal(await page.evaluate(async () => {
-        const { createWallet } = await import('/phase06/wallet.mjs');
+        const { createWallet } = await import(new URL('phase06/wallet.mjs', document.baseURI));
         return createWallet().gift();
       }), 'unavailable');
       await at('2026-11-06T23:00:00Z');
@@ -106,7 +106,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       await second.clock.setFixedTime(new Date('2026-11-11T12:00:00Z'));
       await second.goto(baseURL);
       const claim = target => target.evaluate(async () => {
-        const { createWallet } = await import('/phase06/wallet.mjs');
+        const { createWallet } = await import(new URL('phase06/wallet.mjs', document.baseURI));
         return createWallet().gift();
       });
       assert.deepEqual((await Promise.all([claim(page), claim(second)])).sort(), ['ok', 'unavailable']);

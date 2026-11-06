@@ -1,4 +1,4 @@
-name: Phase 06-AP live Pages checks
+name: Phase 06-CP live Pages checks
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase06ap-live-assets
+          name: dream-spa-phase06cp-live-assets
           path: test-results/
           if-no-files-found: error
 
@@ -57,14 +57,14 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-save --no-package-lock playwright@1.56.1
-      - name: Play 27 sessions on the official site
+      - name: Run the complete browser suites on the official site
         run: |
           set -o pipefail
           mkdir -p test-results
-          node --test --test-concurrency=1 --test-reporter=tap phase04/browser.test.mjs phase06/browser.test.mjs | tee test-results/report.tap
+          node --test --test-concurrency=1 --test-reporter=tap phase04/browser.test.mjs phase06/browser.test.mjs phase06/shop.browser.test.mjs | tee test-results/report.tap
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase06ap-live-${{ matrix.viewport }}
+          name: dream-spa-phase06cp-live-${{ matrix.viewport }}
           path: test-results/
           if-no-files-found: error
