@@ -1,4 +1,4 @@
-import { createSession, endStroke, MASK_TOOLS, readSkin, seededRandom, treat } from '../phase03/facial-state.mjs';
+import { createSession, endStroke, MASK_TOOLS, readSkin, seededRandom, treat } from '../phase03/facial-state.mjs?v=04e';
 
 const steps = {
   spot: { tool: 'gel', icon: '✦', title: 'Brufolini', prompt: 'Mi aiuti con questi brufolini?', hint: 'Cerca il tubetto per i puntini.' },
@@ -22,7 +22,7 @@ export function createJourney({ client, seed, ...skin }) {
   const opening = openings[client][Math.floor(random() * 3)];
   const sequence = [opening, ...preparations[Math.floor(random() * preparations.length)], 'mask'];
   const session = createSession({ ...skin, seed, conditionKinds: [opening] });
-  return { session, sequence, index: 0, mistakes: 0, mask: null, rinseFrom: 0, pending: false };
+  return { session, sequence, index: 0, mistakes: 0, mask: null, rinseFrom: 0, cleanserReady: false, pending: false };
 }
 
 export function currentStep(journey) {
@@ -35,12 +35,13 @@ export function currentAction(journey) {
 
 export function acceptsTool(journey, tool) {
   const action = currentAction(journey);
+  if (tool === 'sponge' && journey.cleanserReady) return true;
   return action.tool ? action.tool === tool : journey.mask ? tool === journey.mask : MASK_TOOLS.includes(tool);
 }
 
 // Each reachable stencil cell is counted once, regardless of repeated strokes.
 function spatialCoverage(session, kind) {
-  const cells = session.cells;
+  const { cells } = session;
   const xs = cells.map(c => c.x), ys = cells.map(c => c.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
   const minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -56,11 +57,11 @@ function spatialCoverage(session, kind) {
       Math.abs(cell.x - midX) < (maxX - minX) * .12 ? 'nose' :
       cell.x < midX ? 'leftCheek' : 'rightCheek';
     const bucket = regions.get(region) || { total: 0, covered: 0 };
-    bucket.total++;
-    if (covered) { bucket.covered++; treated++; }
+    bucket.total += cell.area;
+    if (covered) { bucket.covered += cell.area; treated += cell.area; }
     regions.set(region, bucket);
   }
-  const overall = treated / cells.length;
+  const overall = treated / session.area;
   const minimum = Math.min(...[...regions.values()].filter(r => r.total >= 8)
     .map(r => r.covered / r.total));
   // 88% total, with at least 55% of each reachable macrozone.
@@ -74,7 +75,7 @@ function progress(journey, skin) {
   const kind = journey.sequence[journey.index];
   const { session, rinseFrom } = journey;
   if (rinseFrom) return 1 - skin.covered / rinseFrom;
-  if (kind === 'mask') return skin.covered / session.cells.length / 0.96;
+  if (kind === 'mask') return skin.covered / session.area / 0.96;
   if (kind === 'cleanse') return spatialCoverage(session, kind);
   if (kind === 'cream') return spatialCoverage(session, kind);
   const { conditions } = session;
@@ -83,19 +84,37 @@ function progress(journey, skin) {
 }
 
 export function journeyPercent(journey) {
-  return Math.floor(Math.min(1, progress(journey, readSkin(journey.session))) * 100);
+  const skin = readSkin(journey.session);
+  const fraction = journey.sequence[journey.index] === 'cleanse' && !journey.rinseFrom ?
+    skin.covered / journey.session.area : progress(journey, skin);
+  return Math.floor(Math.min(1, fraction) * 100);
+}
+
+export function beginCleanserRinse(journey) {
+  if (!journey.cleanserReady || journey.rinseFrom) return;
+  endStroke(journey.session);
+  journey.rinseFrom = readSkin(journey.session).covered;
+  journey.cleanserReady = false;
+  journey.mistakes = 0;
 }
 
 export function applyGesture(journey, tool, point) {
   if (journey.pending || !acceptsTool(journey, tool)) return null;
+  if (tool === 'sponge') beginCleanserRinse(journey);
   const { session } = journey;
   if (!treat(session, tool, point)) return null;
   if (MASK_TOOLS.includes(tool)) journey.mask = tool;
 
   const skin = readSkin(session);
+  if (tool === 'cleanser' && journey.cleanserReady) return 'improved';
   if (progress(journey, skin) < 1) return 'improved';
+  if (tool === 'cleanser') {
+    journey.cleanserReady = true;
+    journey.mistakes = 0;
+    return 'cleanser-ready';
+  }
   endStroke(session);
-  if (!journey.rinseFrom && (tool === 'cleanser' || MASK_TOOLS.includes(tool))) {
+  if (!journey.rinseFrom && MASK_TOOLS.includes(tool)) {
     journey.rinseFrom = skin.covered;
     journey.mistakes = 0;
     return 'rinse';

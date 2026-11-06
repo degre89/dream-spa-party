@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="640" viewBox="0 0 512 640">
   <!-- Emma: asymmetric hairline, including the exposed left temple beneath the curl. -->
-  <path fill="white" fill-rule="evenodd" d="
+  <mask id="skin" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="640">
+    <path fill="white" d="
     M254 160 C241 151 222 157 206 161
     C186 165 176 174 166 185 C158 194 156 203 154 214
     C150 223 143 227 141 240 C138 264 136 286 137 313
@@ -8,7 +9,8 @@
     C271 464 302 446 321 426 C344 404 354 385 362 359
     C371 331 371 294 366 267 C364 251 363 236 359 223
     C356 215 345 214 335 204 C325 194 326 182 318 173
-    C306 159 278 152 263 157 Z
+    C306 159 278 152 263 157 Z"/>
+    <path fill="black" d="
     M144 252 C150 232 169 226 188 228 C207 229 225 236 231 247
     L231 253 C199 245 167 234 144 252 Z
     M278 247 C285 236 306 228 324 228 C342 227 355 233 365 252
@@ -20,4 +22,6 @@
     M200 381 C215 382 232 386 246 383 C254 381 258 381 265 383
     C282 386 294 382 311 381 C300 399 278 416 255 416
     C232 416 213 400 200 381 Z"/>
+  </mask>
+  <rect width="512" height="640" fill="white" mask="url(#skin)"/>
 </svg>

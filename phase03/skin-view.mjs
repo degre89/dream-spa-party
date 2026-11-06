@@ -16,11 +16,32 @@ export async function loadStencil(path, width, height) {
   const context = stencil.getContext('2d');
   context.drawImage(image, 0, 0, width, height);
   const alpha = context.getImageData(0, 0, width, height).data;
+  const opacityAt = (x, y) => alpha[(y * width + x) * 4 + 3];
+  const skinAt = (x, y) => x >= 0 && x < width && y >= 0 && y < height &&
+    opacityAt(Math.floor(x), Math.floor(y)) >= 128;
+  const samples = new Map();
   return {
-    stencil,
-    skinAt(x, y) {
-      return x >= 0 && x < width && y >= 0 && y < height &&
-        alpha[(Math.floor(y) * width + Math.floor(x)) * 4 + 3] >= 128;
+    stencil, skinAt,
+    sampleCell(x, y) {
+      const key = y * width + x;
+      if (!samples.has(key)) {
+        let area = 0;
+        let nearest = Infinity;
+        let anchor;
+        for (let row = y - 4; row < Math.min(y + 4, height); row++) {
+          for (let col = x - 4; col < Math.min(x + 4, width); col++) {
+            const opacity = opacityAt(col, row);
+            area += opacity;
+            const distance = (col - x) ** 2 + (row - y) ** 2;
+            if (opacity >= 128 && distance < nearest) {
+              nearest = distance;
+              anchor = { x: col, y: row };
+            }
+          }
+        }
+        samples.set(key, anchor && { ...anchor, area: area / (64 * 255) });
+      }
+      return samples.get(key);
     }
   };
 }
@@ -83,10 +104,11 @@ export function createSkinView(canvas) {
     if (!before) {
       small.clearRect(0, 0, grid.width, grid.height);
       const foam = new Path2D();
-      for (const { x, y, product, clean, glow, hydration, creamUntil = 0 } of session.cells) {
+      for (const { x, y, product, clean, glow, hydration, area, creamUntil = 0 } of session.cells) {
         if (product === 'foam') {
           // Overlap neighboring treated cells, then composite once to keep the
           // opacity uniform. The same cells drive progress and rinsing.
+          if (area < 1) foam.rect(Math.floor(x / 8) * 8, Math.floor(y / 8) * 8, 8, 8);
           foam.moveTo(x + 8, y);
           foam.arc(x, y, 8, 0, Math.PI * 2);
           continue;

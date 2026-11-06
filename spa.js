@@ -1,8 +1,8 @@
-import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs';
-import { acceptsTool, advanceJourney, applyGesture, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs';
+import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
+import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=04e';
 import { drawFace } from './phase04/expressions.mjs';
-import { clients } from './phase03/clients.mjs';
-import { createSkinView, loadStencil } from './phase03/skin-view.mjs';
+import { clients } from './phase03/clients.mjs?v=04e';
+import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=04e';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#mask');
@@ -118,6 +118,7 @@ function updateTool(id) {
 
 function selectTool(id) {
   stopStroke();
+  if (id === 'sponge') beginCleanserRinse(journey);
   updateTool(id);
   setCart(false);
   $('#cartToggle').focus({ preventScroll: true });
@@ -165,12 +166,13 @@ function render() {
   if ($('#step').textContent !== label) $('#step').textContent = label;
   const title = step.icon + ' ' + step.title;
   if ($('#goal').textContent !== title) $('#goal').textContent = title;
-  const message = feedback?.message ?? (selected && acceptsTool(journey, selected) ?
-    tools[selected].hint : journey.mistakes >= 2 ? help() : action.prompt);
+  const message = feedback?.message ?? (journey.cleanserReady ?
+    'Puoi finire di stendere la schiuma o risciacquare.' : selected && acceptsTool(journey, selected) ?
+      tools[selected].hint : journey.mistakes >= 2 ? help() : action.prompt);
   const hint = $('#hint');
   hint.dataset.feedback = feedback?.expression ?? '';
   if (hint.textContent !== message) hint.textContent = message;
-  next.hidden = !journey.rinseFrom || journey.pending || selected === 'sponge';
+  next.hidden = !(journey.rinseFrom || journey.cleanserReady) || journey.pending || selected === 'sponge';
   canvas.setAttribute('aria-description', action.prompt);
 }
 
@@ -205,7 +207,9 @@ function paintSample(event, rect) {
   if (selected === 'cream' && !reducedMotion.matches && now - lastEffect >= 60) {
     creamTrace.push({ x, y, expires: now + 680 });
   }
-  if (result === 'rinse' || result === 'complete') {
+  if (result === 'cleanser-ready') {
+    react('smile', 'Puoi ancora stendere la schiuma!', 1800);
+  } else if (result === 'rinse' || result === 'complete') {
     stopStroke();
     react('smile', result === 'rinse' ? 'Fatto! Ora risciacquiamo.' : 'Che bello! ✦');
     sparkle(x, y, '✧ ✦', true);
@@ -266,7 +270,7 @@ function start(id) {
   if (!skin) return;
   client = { ...clients[id], id };
   journey = createJourney({
-    width, height, client: id, skinAt: skin.skinAt, seed: crypto.getRandomValues(new Uint32Array(1))[0],
+    width, height, client: id, skinAt: skin.skinAt, sampleCell: skin.sampleCell, seed: crypto.getRandomValues(new Uint32Array(1))[0],
     regions: client.regions.map(([x, y, radius]) => ({ x, y, radius }))
   });
   creamTrace = [];

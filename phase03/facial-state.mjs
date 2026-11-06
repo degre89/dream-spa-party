@@ -24,13 +24,14 @@ function validCenter(point, skinAt, radius) {
   return true;
 }
 
-function makeCells(width, height, skinAt) {
+function makeCells(width, height, sampleCell) {
   const cells = [];
   const spacing = 8;
   for (let y = spacing / 2; y < height; y += spacing) {
     for (let x = spacing / 2; x < width; x += spacing) {
-      if (!skinAt(x, y)) continue;
-      cells.push({ x, y, clean: 0, glow: 0, hydration: 0, product: null, creamUntil: 0 });
+      const sample = sampleCell(x, y);
+      if (!sample) continue;
+      cells.push({ ...sample, clean: 0, glow: 0, hydration: 0, product: null, creamUntil: 0 });
     }
   }
   if (!cells.length) throw new Error('Sagoma cutanea vuota');
@@ -74,13 +75,15 @@ function makeConditions(cells, skinAt, regions, random, conditionKinds) {
   return conditions;
 }
 
-export function createSession({ width, height, skinAt, regions, seed, conditionKinds }) {
+export function createSession({ width, height, skinAt, regions, seed, conditionKinds,
+  sampleCell = (x, y) => skinAt(x, y) && { x, y, area: 1 } }) {
   const random = seededRandom(seed);
-  const cells = makeCells(width, height, skinAt);
+  const cells = makeCells(width, height, sampleCell);
   const conditions = makeConditions(cells, skinAt, regions, random, conditionKinds);
   const dullness = 0.55 + random() * 0.4;
   return {
     cells, conditions, dullness, skinAt,
+    area: cells.reduce((total, cell) => total + cell.area, 0),
     treatments: new Set(),
     lastPoint: null,
     lastTool: null,
@@ -164,7 +167,7 @@ export function readSkin(session) {
     totals.cleanliness += cell.clean;
     totals.glow += cell.glow;
     totals.hydration += cell.hydration;
-    totals.covered += Number(Boolean(cell.product));
+    if (cell.product) totals.covered += cell.area;
   }
   const count = session.cells.length;
   const pores = session.conditions.filter(condition => condition.kind === 'pores');
