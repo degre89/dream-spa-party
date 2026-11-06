@@ -17,6 +17,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
     const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch,
       timezoneId: 'Europe/Rome' });
     const page = await context.newPage();
+    page.setDefaultTimeout(10000);
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const at = date => page.clock.setFixedTime(new Date(date));
@@ -57,6 +58,10 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       await tap('#confirmPurchase');
       await balance(30);
       assert.equal(await el('[data-shop-item="martina"]').count(), 0);
+      assert.equal(await page.evaluate(async () => {
+        const { createWallet, CLIENT_PRICE } = await import('/phase06/wallet.mjs');
+        return createWallet().buy({ kind: 'clients', id: 'martina', price: CLIENT_PRICE });
+      }), 'owned');
       await el('#shopStatus').filter({ hasText: 'Martina' }).waitFor();
       await el('.shop-card').filter({ hasText: 'Martina' }).scrollIntoViewIfNeeded();
       await shot('04-cliente-sbloccata');
@@ -104,8 +109,10 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         return createWallet().gift();
       });
       assert.deepEqual((await Promise.all([claim(page), claim(second)])).sort(), ['ok', 'unavailable']);
-      await balance(25);
       await second.close();
+      await page.reload();
+      await tap('#openShop');
+      await balance(25);
       await tap('#shopBack');
       await tap('#play');
       await tap('.client[data-client="martina"]');
