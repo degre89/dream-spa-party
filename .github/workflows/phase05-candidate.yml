@@ -20,11 +20,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-save --no-package-lock playwright@1.56.1
-      - if: matrix.viewport == '412x915'
-        run: npx playwright install ffmpeg
       - name: Verify the candidate on a local server
-        env:
-          SPA_VIDEO: ${{ matrix.viewport == '412x915' && '1' || '0' }}
         shell: bash
         run: |
           set -euo pipefail

@@ -23,10 +23,7 @@ for (const [width, height, touch] of devices) {
     await mkdir(dir, { recursive: true });
     const browser = await chromium.launch(process.env.SPA_CHROME_PATH ?
       { executablePath: process.env.SPA_CHROME_PATH, args: ['--no-sandbox'] } : { channel: 'chrome' });
-    const context = await browser.newContext({
-      viewport: { width, height }, hasTouch: touch, isMobile: touch,
-      ...(process.env.SPA_VIDEO === '1' && { recordVideo: { dir, size: { width, height } } })
-    });
+    const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch });
     await context.tracing.start({ snapshots: true });
     const page = await context.newPage();
     const cdp = touch && await context.newCDPSession(page);
@@ -183,7 +180,14 @@ for (const [width, height, touch] of devices) {
       const box = await bubble.boundingBox();
       const skin = await element('#mask').boundingBox();
       assert.ok(box.y + box.height + 8 < skin.y + skin.height * .23, 'the bubble does not overlap the portrait');
-      assert.ok(await bubble.evaluate(node => node.scrollHeight <= node.clientHeight + 8 && node.scrollWidth <= node.clientWidth));
+      assert.ok(await bubble.evaluate(node => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const text = range.getBoundingClientRect();
+        const panel = node.getBoundingClientRect();
+        return text.height > 0 && text.left >= panel.left && text.right <= panel.right &&
+          text.top >= panel.top && text.bottom <= panel.bottom;
+      }), 'all lines of bubble text fit inside the panel');
       if (record && id === 'sofia') {
         await face.locator('xpath=self::*[@data-mouth="1"]').waitFor();
         const first = await canvasPNG('#spa .reaction-face');
