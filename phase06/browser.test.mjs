@@ -296,7 +296,15 @@ for (const [width, height, touch] of devices) {
           const treated = await alpha(probes[id].skin);
           assert.ok(treated.every(value => value > 50), id + ' cleanser reaches every sampled facial zone');
           if (record) await shot(id + '-cleanser', '#character');
-          const sponge = await tool('sponge');
+          let sponge;
+          if (variantCatalog && recordProducts && variantIndex === 0) {
+            await tap('#cartToggle');
+            await tap('#maskToggle');
+            await tap('#next');
+            assert.ok(await el('#maskPanel').isHidden());
+            assert.equal(await el('[data-category="sponge"]').getAttribute('aria-pressed'), 'false');
+            sponge = await pickVariant('sponge');
+          } else sponge = await tool('sponge');
           if (sponge) await checkProductStroke('sponge', [forehead, [forehead[0] + 8, forehead[1]]], sponge);
           await cover(async () => await percent() === 100 || (await el('#step').innerText()).includes(`4/${count}`));
           await step(4, count);

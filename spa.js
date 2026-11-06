@@ -178,6 +178,7 @@ function showMasks(open) {
 function showProducts(category, trigger) {
   stopStroke();
   const guided = category === 'steamer';
+  setCart(false);
   setCart(true);
   cartTools.hidden = true;
   productPanel.hidden = false;
