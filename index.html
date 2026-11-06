@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#592754">
   <title>Dream Spa Party</title>
-  <link rel="stylesheet" href="spa.css?v=4">
-  <script type="module" src="spa.js?v=04e"></script>
+  <link rel="stylesheet" href="spa.css?v=05">
+  <script type="module" src="spa.js?v=05"></script>
 </head>
 <body>
 <main class="app">
@@ -33,7 +33,7 @@
     <h2 id="goal">Momento Spa</h2>
     <div class="stage">
       <div id="character">
-        <div class="portrait"><img class="hero" alt="" draggable="false"><canvas class="reaction-face" width="768" height="960" aria-hidden="true" hidden></canvas></div>
+        <div class="portrait"><img class="hero" alt="" draggable="false"><img class="expression spa-eyelids" alt="" draggable="false"><canvas class="reaction-face" width="768" height="960" aria-hidden="true" hidden></canvas></div>
         <canvas id="mask" width="512" height="640" aria-label="Superficie del trattamento"></canvas>
         <span id="tool" aria-hidden="true"></span>
       </div>
@@ -45,6 +45,7 @@
         <output id="percent">0%</output>
       </div>
       <div class="treatment-actions">
+        <button class="cta" id="steamStart" aria-pressed="false">Vaporizzatore</button>
         <button class="pill" id="cartToggle" aria-expanded="false" aria-controls="cart">▤ Carrello</button>
         <button class="cta" id="next" hidden>Risciacqua</button>
       </div>

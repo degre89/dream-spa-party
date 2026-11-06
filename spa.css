@@ -88,3 +88,25 @@ footer p { margin: 0 0 5px; }
 #hint[data-feedback="puzzled"] { color: #774376; }
 #hint[data-feedback="smile"] { color: #236b53; }
 #character .celebration { color: #fff1a6; font-size: clamp(1.15rem, 5vw, 2rem); }
+
+.treatment-actions [hidden] { display: none; }
+#steamStart { display: flex; justify-content: center; align-items: center; gap: 8px; touch-action: none; }
+#steamStart[hidden] { display: none; }
+#steamStart .icon { width: 29px; height: 29px; }
+#steamStart[aria-pressed="true"] { background: linear-gradient(#9f2477, #81175b); }
+.spa-eyelids { z-index: 1; transition: opacity .22s ease-in-out; }
+.relaxing .spa-eyelids { opacity: 1; }
+#character.steaming #tool { background: none; box-shadow: none; padding: 0; transform: translate(0, 0); }
+#character.steaming #tool .icon { width: clamp(38px, 11vw, 61px); filter: drop-shadow(0 3px 3px #63255765); }
+.steam-plume { position: absolute; inset: -7% 37% 62% -25%; opacity: 0; transition: opacity .18s ease; }
+.emitting .steam-plume { opacity: 1; }
+.steam-plume i { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(ellipse, #fff 10%, #ffe8fa 38%, #fff0 73%); filter: drop-shadow(0 0 3px #b865ac); animation: steam-puff .65s ease-out infinite; }
+.steam-plume i:nth-child(2) { animation-delay: -.22s; }
+.steam-plume i:nth-child(3) { animation-delay: -.44s; }
+@keyframes steam-puff {
+  from { opacity: .9; transform: translate(45%, 28%) scale(.65); }
+  to { opacity: 0; transform: translate(-45%, -74%) scale(2.3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .steam-plume i, .spa-eyelids { animation: none; transition: none; }
+}

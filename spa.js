@@ -1,8 +1,8 @@
-import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
-import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=04e';
+import { endStroke, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
+import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=05';
 import { drawFace } from './phase04/expressions.mjs';
-import { clients } from './phase03/clients.mjs?v=04e';
-import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=04e';
+import { clients } from './phase03/clients.mjs?v=05';
+import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=05';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#mask');
@@ -10,12 +10,14 @@ const { width, height } = canvas;
 const character = $('#character');
 const cursor = $('#tool');
 const next = $('#next');
+const steamStart = $('#steamStart');
 const cart = $('#cart');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const draw = createSkinView(canvas);
 const drawComparison = createSkinView($('#comparison'));
 
 const tools = {
+  steamer: { label: 'Vaporizzatore', icon: true, hint: 'Passa sulla fronte, sulle guance e sul mento.' },
   cleanser: { label: 'Detergente', icon: true, hint: 'Stendi la schiuma sulla pelle.' },
   brush: { label: 'Spazzolina', icon: true, hint: 'Fai piccoli cerchi dove vedi i pori.' },
   sponge: { label: 'Spugnetta', icon: true, hint: 'Passa la spugnetta sul prodotto rimasto.' },
@@ -37,7 +39,7 @@ $('#stars').textContent = stars;
 
 let client, skin, journey, selected;
 let portrait = $('#home .portrait');
-let blinkTimer, openTimer, reactionTimer, transitionTimer;
+let blinkTimer, openTimer, reactionTimer, transitionTimer, steamTimer;
 let feedback;
 let creamTrace = [];
 let pointer = null;
@@ -110,10 +112,18 @@ function updateTool(id) {
   selected = id;
   for (const button of cart.children) button.setAttribute('aria-pressed', String(button.dataset.tool === id));
   character.classList.toggle('rinsing', id === 'sponge');
+  character.classList.toggle('steaming', id === 'steamer');
+  steamStart.setAttribute('aria-pressed', String(id === 'steamer'));
   cursor.replaceChildren();
   if (!id || id === 'sponge') return;
   if (tools[id].icon) cursor.append(toolIcon(id));
   else cursor.textContent = '✦';
+  if (id === 'steamer') {
+    const plume = document.createElement('span');
+    plume.className = 'steam-plume';
+    for (let index = 0; index < 3; index++) plume.append(document.createElement('i'));
+    cursor.prepend(plume);
+  }
 }
 
 function selectTool(id) {
@@ -149,18 +159,21 @@ function render() {
   frame = 0;
   const now = performance.now();
   creamTrace = creamTrace.filter(point => point.expires > now);
+  const percent = journeyPercent(journey);
+  const steaming = currentAction(journey).tool === 'steamer';
   draw(journey.session, skin.stencil, false, client.id, creamTrace.map(point => ({
     ...point, alpha: 0.55 * (point.expires - now) / 680
-  })));
+  })), steaming ? percent / 100 : null);
   if (creamTrace.length || journey.session.cells.some(cell => cell.creamUntil > now)) frame = requestAnimationFrame(render);
 
   const step = currentStep(journey);
   const action = currentAction(journey);
-  const percent = journeyPercent(journey);
+  steamStart.hidden = !steaming;
+  $('#cartToggle').hidden = steaming;
   const meter = $('#meter');
   $('#fill').style.width = percent + '%';
   meter.setAttribute('aria-valuenow', percent);
-  meter.setAttribute('aria-label', journey.rinseFrom ? 'Risciacquo' : 'Progresso del trattamento');
+  meter.setAttribute('aria-label', steaming ? 'Preparazione con il vapore' : journey.rinseFrom ? 'Risciacquo' : 'Progresso del trattamento');
   $('#percent').textContent = percent + '%';
   const label = client.name + ' · ' + (journey.index + 1) + '/' + journey.sequence.length;
   if ($('#step').textContent !== label) $('#step').textContent = label;
@@ -181,7 +194,9 @@ function stopStroke() {
   pointer = null;
   if (id !== null && canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
   if (journey) endStroke(journey.session);
-  cursor.classList.remove('held');
+  cursor.classList.remove('held', 'emitting');
+  character.classList.remove('relaxing');
+  clearTimeout(steamTimer);
 }
 
 function move(event) {
@@ -195,11 +210,17 @@ function move(event) {
 }
 
 function paintSample(event, rect) {
-  const x = Math.max(0, Math.min(width - 1, (event.clientX - rect.left) * width / rect.width));
-  const y = Math.max(0, Math.min(height - 1, (event.clientY - rect.top) * height / rect.height));
+  const rawX = (event.clientX - rect.left) * width / rect.width;
+  const rawY = (event.clientY - rect.top) * height / rect.height;
+  const x = Math.max(0, Math.min(width - 1, rawX));
+  const y = Math.max(0, Math.min(height - 1, rawY));
   cursor.style.left = x / width * 100 + '%';
-  cursor.style.top = y / height * 100 + '%';
+  cursor.style.top = (selected === 'steamer' ? rawY : y) / height * 100 + '%';
   cursor.classList.add('held');
+  if (selected === 'steamer' && (rawX !== x || rawY !== y)) {
+    endStroke(journey.session);
+    return;
+  }
   const result = applyGesture(journey, selected, { x, y });
   if (!result) return;
 
@@ -207,11 +228,16 @@ function paintSample(event, rect) {
   if (selected === 'cream' && !reducedMotion.matches && now - lastEffect >= 60) {
     creamTrace.push({ x, y, expires: now + 680 });
   }
-  if (result === 'cleanser-ready') {
+  if (result === 'steam') {
+    character.classList.add('relaxing');
+    cursor.classList.add('emitting');
+    clearTimeout(steamTimer);
+    steamTimer = setTimeout(() => cursor.classList.remove('emitting'), 200);
+  } else if (result === 'cleanser-ready') {
     react('smile', 'Puoi ancora stendere la schiuma!', 1800);
   } else if (result === 'rinse' || result === 'complete') {
     stopStroke();
-    react('smile', result === 'rinse' ? 'Fatto! Ora risciacquiamo.' : 'Che bello! ✦');
+    react('smile', result === 'rinse' ? 'Fatto! Ora risciacquiamo.' : selected === 'steamer' ? 'Ora sono pronta! ✦' : 'Che bello! ✦');
     sparkle(x, y, '✧ ✦', true);
     if (result === 'complete') transitionTimer = setTimeout(nextStep, 780);
   } else if (now >= nextReaction) {
@@ -279,6 +305,7 @@ function start(id) {
   updateTool(undefined);
   character.querySelectorAll('.particle').forEach(particle => particle.remove());
   setPortrait($('#spa .portrait'), id);
+  $('#spa .spa-eyelids').src = 'assets/' + client.eyelids;
   show('spa');
   render();
   setCart(false);
@@ -314,11 +341,29 @@ for (const button of document.querySelectorAll('.client')) {
   });
 }
 
-canvas.addEventListener('pointerdown', event => {
-  if (!selected || !cart.hidden || pointer !== null || event.button !== 0) return;
+function beginStroke(event) {
   pointer = event.pointerId;
   canvas.setPointerCapture(pointer);
   move(event);
+}
+
+steamStart.prepend(toolIcon('steamer'));
+steamStart.addEventListener('pointerdown', event => {
+  if (event.button !== 0 || pointer !== null || journey.pending) return;
+  updateTool('steamer');
+  render();
+  // Transfer capture so one continuous drag can start on the device in the tray.
+  beginStroke(event);
+});
+bindAction(steamStart, () => {
+  if (journey.pending) return;
+  updateTool('steamer');
+  render();
+});
+
+canvas.addEventListener('pointerdown', event => {
+  if (!selected || !cart.hidden || pointer !== null || event.button !== 0) return;
+  beginStroke(event);
 });
 canvas.addEventListener('pointermove', move);
 canvas.addEventListener('pointerup', event => {
@@ -351,7 +396,7 @@ function toolIcon(id) {
   icon.setAttribute('viewBox', '0 0 32 32');
   icon.setAttribute('aria-hidden', 'true');
   const use = document.createElementNS(namespace, 'use');
-  use.setAttribute('href', 'assets/spa-tools.svg#' + id);
+  use.setAttribute('href', 'assets/spa-tools.svg?v=05#' + id);
   icon.append(use);
   return icon;
 }
