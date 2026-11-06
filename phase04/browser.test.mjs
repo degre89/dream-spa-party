@@ -30,6 +30,7 @@ for (const [width, height, touch] of devices) {
     const errors = [];
     const cleanserEvidence = [];
     const spaEvidence = [];
+    const refinementEvidence = [];
     page.on('pageerror', error => errors.push(error.message));
     page.on('response', response => {
       if (response.status() >= 400 && !response.url().endsWith('/favicon.ico')) {
@@ -72,9 +73,22 @@ for (const [width, height, touch] of devices) {
 
     async function pick(tool) {
       if (await element('#cart').isHidden()) await activate('#cartToggle');
+      if (!baseline && masks.includes(tool)) {
+        await activate('#maskToggle');
+        assert.equal(await element('#maskToggle').getAttribute('aria-expanded'), 'true');
+        for (const variant of masks) {
+          const jar = element(`#maskPanel [data-tool="${variant}"]`);
+          assert.ok(await jar.isVisible());
+          assert.ok(await jar.locator('img').evaluate(async image => {
+            await image.decode();
+            return image.naturalWidth > 0;
+          }));
+        }
+      }
       await activate(`[data-tool="${tool}"]`);
       assert.equal(await element(`[data-tool="${tool}"]`).getAttribute('aria-pressed'), 'true');
       assert.ok(await element('#cart').isHidden());
+      if (!baseline) assert.equal(await element('#maskToggle').getAttribute('aria-expanded'), 'false');
     }
 
     async function gesture(points, whileHeld) {
@@ -103,6 +117,21 @@ for (const [width, height, touch] of devices) {
 
     async function stroke(points, whileHeld) {
       await gesture(await facePoints(points), whileHeld);
+    }
+
+    async function checkCursor(id, tool, point, record = false) {
+      const [pointer] = await facePoints([point]);
+      const icon = element('#tool.held');
+      const box = await icon.boundingBox();
+      assert.ok(box.width >= 40 && box.height >= 32, tool + ' remains large enough to see');
+      assert.ok(pointer.x < box.x || pointer.x > box.x + box.width ||
+        pointer.y < box.y || pointer.y > box.y + box.height, tool + ' sits clear of the contact point');
+      const face = await element('#mask').boundingBox();
+      const position = await icon.evaluate(node => ({ x: parseFloat(node.style.left), y: parseFloat(node.style.top) }));
+      assert.ok(Math.abs(face.x + face.width * position.x / 100 - pointer.x) <= 1);
+      assert.ok(Math.abs(face.y + face.height * position.y / 100 - pointer.y) <= 1);
+      refinementEvidence.push({ client: id, tool, size: [box.width, box.height], pointer, box });
+      if (record) await shot('tool-' + tool + '-' + id);
     }
 
     async function pixels(points) {
@@ -152,8 +181,12 @@ for (const [width, height, touch] of devices) {
 
     async function fullCart() {
       await activate('#cartToggle');
-      const buttons = element('#cart button');
-      assert.equal(await buttons.count(), baseline ? 10 : 11);
+      const buttons = element(baseline ? '#cart button' : '#cartTools button');
+      assert.equal(await buttons.count(), baseline ? 10 : 8);
+      if (!baseline) {
+        assert.equal(await element('#maskToggle').innerText(), 'Maschere');
+        assert.ok(await element('#maskPanel').isHidden());
+      }
       for (const button of await buttons.all()) assert.ok(await button.isEnabled() && await button.isVisible());
     }
 
@@ -220,7 +253,10 @@ for (const [width, height, touch] of devices) {
         await element('#tool.held.emitting').waitFor();
         await element('#character.relaxing').waitFor();
         await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.steam-plume')).opacity) > .3);
-        if (record) await shot('steam-' + id);
+        if (record) {
+          await checkCursor(id, 'steamer', cheek.at(-1));
+          await shot('steam-' + id);
+        }
       });
       const firstPass = await percent();
       assert.ok(firstPass > 0 && firstPass < 100);
@@ -284,7 +320,21 @@ for (const [width, height, touch] of devices) {
         await shot(`expression-${id}-neutral`);
         assert.equal(await percent(), 0);
         await fullCart();
-        if (index === 0) await shot('04-carrello-completo');
+        if (index === 0) {
+          await shot('04-carrello-completo');
+          if (!baseline) {
+            await activate('#maskToggle');
+            const panel = await element('#maskPanel').boundingBox();
+            const [cheek] = await facePoints([[255, 348]]);
+            assert.ok(panel.y > cheek.y && panel.x >= 0 && panel.x + panel.width <= width);
+            assert.ok(await element('#cartTools').isHidden());
+            await viewportFits();
+            await shot('05-maschere-raggruppate');
+            await activate('#maskBack');
+            assert.ok(await element('#maskPanel').isHidden());
+            assert.ok(await element('#cartTools').isVisible());
+          }
+        }
 
         const [mark] = conditions;
         const correct = correctTools[kind];
@@ -297,9 +347,21 @@ for (const [width, height, touch] of devices) {
         assert.equal(await percent(), 0, 'repeated wrong gestures never complete a stage');
         await element('#spa .portrait:not(.puzzled)').waitFor();
         await pick('honey');
-        assert.match(await element('#hint').innerText(), /^Cerca/);
-        await pick('cleanser');
-        assert.match(await element('#hint').innerText(), /^Prova:/);
+        if (baseline) {
+          assert.match(await element('#hint').innerText(), /^Cerca/);
+          await pick('cleanser');
+          assert.match(await element('#hint').innerText(), /^Prova:/);
+        } else {
+          const name = { gel: 'il gel', serum: 'il siero', brush: 'la spazzolina' }[correct];
+          const expected = 'Prova con ' + name + '!';
+          assert.equal(await element('#hint').innerText(), expected);
+          await element('#spa .portrait[data-mouth]').waitFor();
+          await shot('06-suggerimento-' + id);
+          await element('#hint').waitFor({ state: 'hidden' });
+          await activate('#repeatHint');
+          assert.equal(await element('#hint').innerText(), expected);
+          await element('#spa .portrait[data-mouth]').waitFor();
+        }
         await pick(correct);
         await element('#spa .portrait.smile').waitFor();
         if (baseline) await element('#spa .grin').evaluate(image => image.decode());
@@ -329,7 +391,24 @@ for (const [width, height, touch] of devices) {
             document.querySelector('#meter').getAttribute('aria-valuenow') === '100', phaseLabel);
           await fullCart();
           const mask = masks[(index + devices.findIndex(device => device[0] === width)) % masks.length];
-          await pick(step === 'mask' ? mask : correctTools[step]);
+          if (!baseline) {
+            assert.equal(await element('#cart [aria-pressed="true"]').count(), 0, 'a new phase clears the tool');
+            await pick('gel');
+            assert.match(await element('#hint').innerText(), /^Mmm/, 'first mistake in each phase starts a new count');
+            if (step === 'cleanse' || step === 'mask') {
+              await pick('serum');
+              assert.equal(await element('#hint').innerText(), step === 'cleanse' ?
+                'Prova con il detergente!' : 'Scegli una maschera dal carrello!');
+            }
+          }
+          const selected = step === 'mask' ? mask : correctTools[step];
+          await pick(selected);
+          if (!baseline) {
+            const [x, y] = profile.forehead;
+            await stroke([[x - 6, y], [x, y]], () => checkCursor(id, selected, [x, y], index === 0));
+            await waitForFrame();
+            assert.ok((await pixels([profile.forehead]))[0][3] > 0, 'product stays aligned with the real contact');
+          }
           if (step === 'cleanse') {
             const cheek = [[155, 350], [190, 350]];
             await stroke(cheek);
@@ -370,7 +449,9 @@ for (const [width, height, touch] of devices) {
             assert.equal(await percent(), creamPercent, 'absorbing cream keeps spatial progress');
             await gestureUntil(phaseFinished, 5);
           } else {
-            await gestureUntil(() => element('#next').isVisible());
+            await gestureUntil(step === 'mask' && !baseline ?
+              async () => await element('#meter').getAttribute('aria-label') === 'Risciacquo' :
+              () => element('#next').isVisible());
             if (step === 'cleanse' && !baseline) {
               assert.equal(await element('#meter').getAttribute('aria-label'), 'Progresso del trattamento');
               const readyPercent = await percent();
@@ -386,14 +467,34 @@ for (const [width, height, touch] of devices) {
             assert.ok(protectedPixels.every(pixel => pixel[3] === 0), 'eyes, eyebrows, lips and hair stay clear');
             if (step === 'mask') await shot('09-maschera-' + mask);
             if (step === 'cleanse') await shot(`cleanser-${id}-before-rinse`);
-            await fullCart();
-            await pick(step === 'mask' ? 'cream' : 'gel');
+            if (step === 'mask' && !baseline) {
+              assert.ok(await element('#next').isHidden());
+              assert.equal(await element('#cart [aria-pressed="true"]').count(), 0);
+              assert.equal(await percent(), 0);
+              const unrinsed = await canvasPNG('#mask');
+              await stroke([[230, profile.forehead[1]], [278, profile.forehead[1]]]);
+              assert.equal(await canvasPNG('#mask'), unrinsed, 'drag without selecting a sponge cannot rinse');
+              await pick('cream');
+              assert.match(await element('#hint').innerText(), /^Mmm/, 'rinse starts with a fresh mistake count');
+              await pick('gel');
+              assert.equal(await element('#hint').innerText(), 'Prova con la spugnetta!');
+              await fullCart();
+              assert.equal(await element('[data-tool="sponge"]').getAttribute('aria-pressed'), 'false');
+              if (index === 0) await shot('09-risciacquo-spugnetta-da-scegliere');
+              await activate('#cartToggle');
+            } else {
+              await fullCart();
+              await pick(step === 'mask' ? 'cream' : 'gel');
+            }
             const coated = await canvasPNG('#mask');
             await stroke([[230, profile.forehead[1]], [278, profile.forehead[1]]]);
             assert.equal(await canvasPNG('#mask'), coated);
-            await activate('#next');
+            if (step === 'mask' && !baseline) await pick('sponge');
+            else await activate('#next');
             assert.equal(await element('#meter').getAttribute('aria-label'), 'Risciacquo');
-            await stroke([[230, profile.forehead[1]], [278, profile.forehead[1]]]);
+            const last = [278, profile.forehead[1]];
+            await stroke([[230, profile.forehead[1]], last], baseline ? undefined :
+              () => checkCursor(id, 'sponge', last, step === 'mask' && index === 0));
             await waitForFrame();
             assert.ok(await percent() > 0 && await percent() < 100, 'rinsing progresses locally');
             const [rinsed] = await pixels([profile.forehead]);
@@ -437,12 +538,14 @@ for (const [width, height, touch] of devices) {
           await pick('gel');
           await stroke([[conditions[0].x, conditions[0].y]]);
           assert.equal(await percent(), 0, 'another product cannot treat the eye shadows');
+          await pick('serum');
+          assert.equal(await element('#hint').innerText(), 'Prova con le patch!');
           await pick('patches');
           const eyes = clients[id].protected.slice(0, 2);
           await stroke([eyes[0]]);
           assert.equal(await percent(), 0, 'the patch cannot be placed over the eye');
           const [left, right] = conditions.map(({ x, y }) => [x, y]);
-          await stroke([[255, 420], left]);
+          await stroke([[255, 420], left], () => checkCursor(id, 'patches', left, index === 0));
           await waitForFrame();
           assert.equal(await percent(), 25);
           await stroke([left]);
@@ -494,6 +597,7 @@ for (const [width, height, touch] of devices) {
       await writeFile(dir + '/browser-errors.json', JSON.stringify(errors, null, 2));
       await context.tracing.stop(failed ? { path: dir + '/trace.zip' } : {});
       await writeFile(dir + '/spa-experience.json', JSON.stringify(spaEvidence, null, 2));
+      await writeFile(dir + '/gameplay-refinements.json', JSON.stringify(refinementEvidence, null, 2));
       await context.close();
       await browser.close();
     }

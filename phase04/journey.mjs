@@ -10,7 +10,7 @@ const steps = {
   pores: { tool: 'brush', icon: '❋', title: 'Piccoli pori', prompt: 'Vedi quei gruppetti di puntini?', hint: 'Cerca qualcosa di morbido con le setole.' },
   cleanse: { tool: 'cleanser', icon: '○', title: 'Nuvole di schiuma', prompt: 'Facciamo un po’ di schiuma?', hint: 'Cerca il flacone che fa la schiuma.' },
   cream: { tool: 'cream', icon: '♡', title: 'Una carezza', prompt: 'Vorrei una carezza morbida!', hint: 'Cerca il vasetto della crema.' },
-  mask: { icon: '✿', title: 'Maschera magica', prompt: 'Quale maschera scegli?', hint: 'Cerca uno dei quattro vasetti colorati.' },
+  mask: { icon: '✿', title: 'Maschera magica', prompt: 'Quale maschera scegli?', hint: 'Apri Maschere nel carrello e scegli un vasetto.' },
   rinse: { tool: 'sponge', icon: '○', prompt: 'Via tutto con la spugnetta!', hint: 'Cerca la spugnetta gialla.' }
 };
 
