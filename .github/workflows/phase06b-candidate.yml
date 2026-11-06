@@ -1,0 +1,37 @@
+name: Phase 06-B candidate browser checks
+on:
+  push:
+    branches: [development/phase06b-magic-products]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport: [320x568, 412x915, 1280x720]
+    env:
+      SPA_VIEWPORT: ${{ matrix.viewport }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - name: Test candidate on the local runner
+        run: |
+          set -o pipefail
+          mkdir -p test-results
+          python3 -m http.server 8000 --bind 127.0.0.1 > test-results/server.log 2>&1 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          node --test --test-concurrency=1 --test-reporter=tap phase04/browser.test.mjs phase06/browser.test.mjs | tee test-results/report.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dream-spa-phase06b-${{ matrix.viewport }}
+          path: test-results/
+          if-no-files-found: error

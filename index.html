@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#592754">
   <title>Dream Spa Party</title>
-  <link rel="stylesheet" href="spa.css?v=06a">
-  <script type="module" src="spa.js?v=06a"></script>
+  <link rel="stylesheet" href="spa.css?v=06b">
+  <script type="module" src="spa.js?v=06b"></script>
 </head>
 <body>
 <main class="app">
@@ -45,12 +45,17 @@
       </div>
       <div class="treatment-actions">
         <button class="cta" id="steamStart" aria-pressed="false">Vaporizzatore</button>
+        <button class="pill" id="steamModels" type="button" aria-controls="productPanel" aria-expanded="false" hidden>Modelli</button>
         <button class="pill" id="cartToggle" aria-expanded="false" aria-controls="cart">▤ Carrello</button>
         <button class="cta" id="next" hidden>Risciacqua</button>
       </div>
       <div id="cart" hidden role="group" aria-label="Carrello dei trattamenti">
         <div id="cartTools" class="tool-grid">
           <button class="spa-tool" id="maskToggle" type="button" aria-expanded="false" aria-controls="maskPanel"><img src="assets/jar-strawberry.svg" alt="">Maschere</button>
+        </div>
+        <div id="productPanel" hidden>
+          <button id="productBack" type="button"></button>
+          <div id="productOptions" class="tool-grid" role="group"></div>
         </div>
         <div id="maskPanel" hidden>
           <button id="maskBack" type="button">‹ Carrello</button>
@@ -78,3 +83,4 @@
 </main>
 </body>
 </html>
+

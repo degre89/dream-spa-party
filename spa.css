@@ -125,3 +125,13 @@ footer p { margin: 0 0 5px; }
 #hint[data-feedback="smile"] { color: #236b53; }
 #repeatHint { position: absolute; right: 0; top: 50%; width: 40px; height: 44px; transform: translateY(-50%); background: transparent; border: 0; color: #fff; font-size: 1rem; }
 #repeatHint::before { content: ""; position: absolute; inset: 8px 5px; z-index: -1; border: 1px solid #fff; border-radius: 50%; background: #8b3c79; }
+
+
+#productBack { min-height: 44px; padding: 0 8px; border: 0; color: #66244f; background: transparent; }
+#productOptions .spa-tool { min-height: 72px; padding: 4px 2px; overflow-wrap: anywhere; }
+#productOptions img { width: 44px; height: 44px; max-width: 100%; }
+#steamStart img { width: 31px; height: 31px; }
+#steamModels { flex: 0 0 auto; padding-inline: 10px; }
+#character.rinsing #tool { width: auto; aspect-ratio: auto; background: none; box-shadow: none; }
+#character .product-particle { color: var(--spark-color); text-shadow: 0 0 3px var(--spark-shadow), 0 1px 2px var(--spark-shadow); font-size: .9rem; }
+.steam-plume i { background: radial-gradient(ellipse, #fff 16%, var(--vapor, #ffeafa) 41%, #fff0 76%); }

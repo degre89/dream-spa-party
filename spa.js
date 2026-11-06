@@ -1,3 +1,4 @@
+import { products } from './phase06/products.mjs?v=06b';
 import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
 import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=06a';
 import { drawFace } from './phase04/expressions.mjs?v=06a';
@@ -12,6 +13,12 @@ const character = $('#character');
 const cursor = $('#tool');
 const next = $('#next');
 const steamStart = $('#steamStart');
+const steamModels = $('#steamModels');
+const productPanel = $('#productPanel');
+const productOptions = $('#productOptions');
+const productBack = $('#productBack');
+const productChoices = Object.fromEntries(Object.entries(products).map(([category, variants]) => [category, variants[0]]));
+const categoryButtons = {};
 const cart = $('#cart');
 const cartToggle = $('#cartToggle');
 const cartTools = $('#cartTools');
@@ -54,6 +61,7 @@ let creamTrace = [];
 let pointer = null;
 let patchOrigin;
 let handledTap;
+let closeProducts;
 let frame = 0;
 let lastEffect = 0;
 let nextReaction = 0;
@@ -152,13 +160,60 @@ function setPortrait(container, id) {
 function setCart(open) {
   cart.hidden = !open;
   cartToggle.setAttribute('aria-expanded', String(open));
-  if (!open) showMasks(false);
+  if (!open) {
+    showMasks(false);
+    productPanel.hidden = true;
+    productOptions.replaceChildren();
+    steamModels.setAttribute('aria-expanded', 'false');
+    for (const button of Object.values(categoryButtons)) button.setAttribute('aria-expanded', 'false');
+  }
 }
 
 function showMasks(open) {
   cartTools.hidden = open;
   maskPanel.hidden = !open;
   maskToggle.setAttribute('aria-expanded', String(open));
+}
+
+function showProducts(category, trigger) {
+  stopStroke();
+  const guided = category === 'steamer';
+  setCart(true);
+  cartTools.hidden = true;
+  productPanel.hidden = false;
+  trigger.setAttribute('aria-expanded', 'true');
+  productBack.textContent = guided ? '‹ Vaporizzatore' : '‹ Carrello';
+  productOptions.setAttribute('aria-label', tools[category].label);
+  productOptions.replaceChildren();
+  closeProducts = () => {
+    setCart(!guided);
+    productPanel.hidden = true;
+    productOptions.replaceChildren();
+    cartTools.hidden = false;
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.focus({ preventScroll: true });
+  };
+  for (const variant of products[category]) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'spa-tool';
+    button.dataset.variant = variant.id;
+    button.setAttribute('aria-pressed', String(productChoices[category] === variant));
+    button.append(productGraphic(variant), variant.name);
+    bindAction(button, () => {
+      if (journey.pending) return;
+      productChoices[category] = variant;
+      trigger.querySelector('img')?.replaceWith(productGraphic(variant));
+      if (guided) {
+        steamStart.querySelector('img').replaceWith(productGraphic(variant));
+        setCart(false);
+        if (selected === 'steamer') updateTool('steamer');
+        steamStart.focus({ preventScroll: true });
+      } else selectTool(category);
+    });
+    productOptions.append(button);
+  }
+  productBack.focus({ preventScroll: true });
 }
 
 function updateTool(id) {
@@ -170,11 +225,12 @@ function updateTool(id) {
   character.classList.toggle('steaming', id === 'steamer');
   steamStart.setAttribute('aria-pressed', String(id === 'steamer'));
   cursor.replaceChildren();
-  if (!id || id === 'sponge') return;
+  if (!id) return;
   cursor.append(toolGraphic(id));
   if (id === 'steamer') {
     const plume = document.createElement('span');
     plume.className = 'steam-plume';
+    plume.style.setProperty('--vapor', productChoices.steamer.effect.color);
     for (let index = 0; index < 3; index++) plume.append(document.createElement('i'));
     cursor.prepend(plume);
   }
@@ -224,6 +280,7 @@ function render() {
     patches === 'remove' ? 'Ora togli tutte e due le patch!' : null;
   const step = currentStep(journey);
   steamStart.hidden = !steaming;
+  steamModels.hidden = !steaming || journey.pending;
   cartToggle.hidden = steaming;
   const meter = $('#meter');
   $('#fill').style.width = percent + '%';
@@ -321,14 +378,22 @@ function paintSample(event, rect, released = false) {
   if (!frame) frame = requestAnimationFrame(render);
   if (now - lastEffect < 100) return;
   lastEffect = now;
-  if (result === 'improved') sparkle(x, y, selected === 'sponge' ? '○ ✦' : '✧');
+  const effect = productChoices[selected]?.effect;
+  if (effect?.glyph && result !== 'complete' && result !== 'rinse') {
+    sparkle(x, y, effect.glyph, false, effect);
+  } else if (result === 'improved') sparkle(x, y, '✧');
 }
 
-function sparkle(x, y, text, success = false) {
+function sparkle(x, y, text, success = false, effect) {
   if (reducedMotion.matches) return;
   const particle = document.createElement('span');
   particle.className = success ? 'particle celebration' : 'particle';
   particle.textContent = text;
+  if (effect) {
+    particle.classList.add('product-particle');
+    particle.style.setProperty('--spark-color', effect.color);
+    particle.style.setProperty('--spark-shadow', effect.shadow);
+  }
   particle.style.left = x / width * 100 + '%';
   particle.style.top = y / height * 100 + '%';
   particle.addEventListener('animationend', () => particle.remove(), { once: true });
@@ -394,7 +459,13 @@ for (const id of [...SPA_TOOLS, 'patches']) {
   button.className = 'spa-tool';
   button.setAttribute('aria-pressed', 'false');
   button.append(toolGraphic(id), label);
-  bindAction(button, () => selectTool(id));
+  if (products[id]) {
+    categoryButtons[id] = button;
+    button.dataset.category = id;
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', 'productPanel');
+    bindAction(button, () => showProducts(id, button));
+  } else bindAction(button, () => selectTool(id));
   if (MASK_TOOLS.includes(id)) maskOptions.append(button);
   else cartTools.insertBefore(button, maskToggle);
 }
@@ -432,9 +503,17 @@ function beginStroke(event) {
   move(event);
 }
 
-steamStart.prepend(toolIcon('steamer'));
+steamStart.prepend(toolGraphic('steamer'));
+bindAction(steamModels, () => {
+  if (productPanel.hidden) showProducts('steamer', steamModels);
+  else {
+    setCart(false);
+    steamModels.focus({ preventScroll: true });
+  }
+});
 steamStart.addEventListener('pointerdown', event => {
   if (event.button !== 0 || pointer !== null || journey.pending) return;
+  setCart(false);
   updateTool('steamer');
   render();
   // Transfer capture so one continuous drag can start on the device in the tray.
@@ -470,6 +549,7 @@ function goHome() {
   show('home');
 }
 for (const selector of ['#chooseHome', '#back', '#goHome']) bindAction($(selector), goHome);
+bindAction(productBack, () => closeProducts());
 bindAction(cartToggle, () => setCart(cart.hidden));
 bindAction(maskToggle, () => {
   showMasks(true);
@@ -484,9 +564,20 @@ bindAction($('#repeatHint'), () => {
 });
 bindAction($('#before'), () => compare(true));
 bindAction($('#after'), () => compare(false));
-bindAction(next, () => { if (!next.hidden) selectTool('sponge'); });
+bindAction(next, () => {
+  if (!next.hidden) showProducts('sponge', categoryButtons.sponge);
+});
+
+function productGraphic(variant) {
+  const graphic = document.createElement('img');
+  graphic.src = variant.asset;
+  graphic.alt = '';
+  graphic.draggable = false;
+  return graphic;
+}
 
 function toolGraphic(id) {
+  if (productChoices[id]) return productGraphic(productChoices[id]);
   if (tools[id].icon) return toolIcon(id);
   const jar = document.createElement('img');
   jar.src = 'assets/jar-' + id + '.svg';
@@ -545,3 +636,4 @@ reducedMotion.addEventListener('change', () => {
   if (reducedMotion.matches) stopTalking();
 });
 scheduleBlink();
+

@@ -90,6 +90,44 @@ for (const [width, height, touch] of devices) {
       assert.ok(await until(), 'full-face strokes reach the treatment threshold');
     }
 
+    let variantIndex = 0;
+    let recordProducts = false;
+    let variantCatalog;
+
+    async function pickVariant(category) {
+      const choices = variantCatalog[category];
+      const options = el('#productOptions button');
+      assert.deepEqual(await options.allTextContents(), choices.map(variant => variant.name));
+      for (const option of await options.all()) {
+        assert.ok(await option.locator('img').evaluate(async image => {
+          await image.decode();
+          return image.naturalWidth > 0;
+        }));
+      }
+      if (recordProducts && variantIndex === 0) await shot('products-' + category);
+      const variant = choices[variantIndex];
+      await tap(`[data-variant="${variant.id}"]`);
+      assert.ok(await el('#cart').isHidden());
+      return variant;
+    }
+
+    async function checkProductStroke(category, points, variant) {
+      await stroke(points, async () => {
+        assert.equal(await el('#tool img').getAttribute('src'), variant.asset);
+        const face = await el('#mask').boundingBox();
+        const [x, y] = points.at(-1);
+        const actual = await el('#tool').evaluate(node => [parseFloat(node.style.left), parseFloat(node.style.top)]);
+        assert.ok(Math.abs(face.width * (actual[0] / 100 - x / 512)) <= 1);
+        assert.ok(Math.abs(face.height * (actual[1] / 100 - y / 640)) <= 1);
+        if (category === 'steamer') {
+          assert.equal(await el('.steam-plume').evaluate(node => node.style.getPropertyValue('--vapor')), variant.effect.color);
+        } else {
+          await el('.product-particle').filter({ hasText: variant.effect.glyph }).first().waitFor({ timeout: 1000 });
+        }
+        if (recordProducts) await shot('effect-' + variant.id);
+      });
+    }
+
     async function tool(id) {
       await tap('#cartToggle');
       if (MASK_TOOLS.includes(id)) {
@@ -98,8 +136,10 @@ for (const [width, height, touch] of devices) {
       }
       const selector = `[data-tool="${id}"]`;
       await tap(selector);
+      const variant = variantCatalog?.[id] && await pickVariant(id);
       assert.equal(await el(selector).getAttribute('aria-pressed'), 'true');
       assert.ok(await el('#cart').isHidden());
+      return variant;
     }
 
     const alpha = points => el('#mask').evaluate((canvas, points) => {
@@ -158,6 +198,9 @@ for (const [width, height, touch] of devices) {
       await buttons.last().scrollIntoViewIfNeeded();
       await shot('collection-bottom');
 
+      if (await el('#steamModels').count()) {
+        variantCatalog = await page.evaluate(async () => (await import('/phase06/products.mjs')).products);
+      }
       let total = 41;
       for (const id of Object.keys(probes)) {
         const { patches, regular, included, excluded, marksReachable } = await fixture(id);
@@ -169,6 +212,8 @@ for (const [width, height, touch] of devices) {
           const { seed, sequence, marks } = scenarios[scenario];
           const opening = sequence[1];
           const record = scenario === 0;
+          variantIndex = scenario;
+          recordProducts = id === Object.keys(probes)[0];
           await page.evaluate(seed => { window.testSeed = seed; }, seed);
           await tap(`.client[data-client="${id}"]`);
           await el(`${activeFace}[data-client="${id}"]`).waitFor();
@@ -189,6 +234,12 @@ for (const [width, height, touch] of devices) {
             await shot(id + '-neutral', activeFace);
           }
 
+          let vapor;
+          if (variantCatalog) {
+            await tap('#steamModels');
+            vapor = await pickVariant('steamer');
+            assert.equal(await percent(), 0);
+          }
           await tap('#steamStart');
           const [forehead, leftCheek, rightCheek] = probes[id].skin;
           await stroke([leftCheek, [leftCheek[0] + 20, leftCheek[1]]], async () => {
@@ -198,6 +249,7 @@ for (const [width, height, touch] of devices) {
               await shot(id + '-relaxed', activeFace);
             }
           });
+          if (vapor) await checkProductStroke('steamer', [forehead, [forehead[0] + 12, forehead[1]]], vapor);
           assert.ok(await percent() > 0 && await percent() < 100);
           await cover(async () => await percent() === 100 || await el('#steamStart').isHidden());
           await step(2, count);
@@ -237,16 +289,19 @@ for (const [width, height, touch] of devices) {
             }
           }
           await step(3, count);
-          await tool('cleanser');
+          const cleanser = await tool('cleanser');
+          if (cleanser) await checkProductStroke('cleanser', [leftCheek, [leftCheek[0] + 10, leftCheek[1]]], cleanser);
           await cover(() => el('#next').isVisible());
           assert.ok((await alpha(probes[id].protected)).every(value => value === 0));
           const treated = await alpha(probes[id].skin);
           assert.ok(treated.every(value => value > 50), id + ' cleanser reaches every sampled facial zone');
           if (record) await shot(id + '-cleanser', '#character');
-          await tool('sponge');
+          const sponge = await tool('sponge');
+          if (sponge) await checkProductStroke('sponge', [forehead, [forehead[0] + 8, forehead[1]]], sponge);
           await cover(async () => await percent() === 100 || (await el('#step').innerText()).includes(`4/${count}`));
           await step(4, count);
-          await tool('cream');
+          const cream = await tool('cream');
+          if (cream) await checkProductStroke('cream', [rightCheek, [rightCheek[0] - 10, rightCheek[1]]], cream);
           await cover(async () => await percent() === 100 || (await el('#step').innerText()).includes(`5/${count}`));
           if (record) await shot(id + '-cream', '#character');
           await step(5, count);
@@ -283,3 +338,4 @@ for (const [width, height, touch] of devices) {
     }
   });
 }
+

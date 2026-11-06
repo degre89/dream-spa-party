@@ -86,6 +86,9 @@ for (const [width, height, touch] of devices) {
         }
       }
       await activate(`[data-tool="${tool}"]`);
+      if (await element('#productPanel').isVisible()) {
+        await activate('#productOptions button:first-child');
+      }
       assert.equal(await element(`[data-tool="${tool}"]`).getAttribute('aria-pressed'), 'true');
       assert.ok(await element('#cart').isHidden());
       if (!baseline) assert.equal(await element('#maskToggle').getAttribute('aria-expanded'), 'false');
@@ -494,7 +497,10 @@ for (const [width, height, touch] of devices) {
             await stroke([[230, profile.forehead[1]], [278, profile.forehead[1]]]);
             assert.equal(await canvasPNG('#mask'), coated);
             if (step === 'mask' && !baseline) await pick('sponge');
-            else await activate('#next');
+            else {
+              await activate('#next');
+              if (await element('#productPanel').isVisible()) await activate('#productOptions button:first-child');
+            }
             assert.equal(await element('#meter').getAttribute('aria-label'), 'Risciacquo');
             const last = [278, profile.forehead[1]];
             await stroke([[230, profile.forehead[1]], last], baseline ? undefined :
@@ -607,3 +613,4 @@ for (const [width, height, touch] of devices) {
     }
   });
 }
+
