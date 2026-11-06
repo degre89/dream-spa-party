@@ -1,4 +1,4 @@
-name: Phase 05-R live Pages checks
+name: Phase 06-AP live Pages checks
 
 on:
   push:
@@ -11,79 +11,60 @@ on:
       - 'phase03/**'
       - 'phase04/**'
       - 'phase05/**'
+      - 'phase06/**'
+      - '.github/scripts/verify-pages.py'
       - '.github/workflows/phase03-live.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  SPA_URL: https://degre89.github.io/dream-spa-party/
+
 jobs:
-  live-chromium:
+  public-assets:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the deployed files against the release commit
+        run: |
+          set -o pipefail
+          mkdir -p test-results
+          python3 .github/scripts/verify-pages.py 2>&1 | tee test-results/live-assets.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dream-spa-phase06ap-live-assets
+          path: test-results/
+          if-no-files-found: error
+
+  live-chromium:
+    needs: public-assets
+    runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport: [320x568, 412x915, 1280x720]
     env:
-      SPA_URL: https://degre89.github.io/dream-spa-party/
+      SPA_VIEWPORT: ${{ matrix.viewport }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm install --no-save --no-package-lock playwright@1.56.1
-      - name: Wait for the release and verify the public files
-        shell: bash
+      - name: Play 27 sessions on the official site
         run: |
+          set -o pipefail
           mkdir -p test-results
-          response=$(mktemp)
-          trap 'rm -f "$response"' EXIT
-          ready=false
-          for attempt in $(seq 1 48); do
-            if curl -fsSL --max-time 10 "${SPA_URL}?release=$GITHUB_SHA" -o "$response" &&
-               cmp -s index.html "$response" &&
-               curl -fsSL --max-time 10 "$SPA_URL" -o "$response" &&
-               cmp -s index.html "$response"; then
-              ready=true
-              break
-            fi
-            sleep 5
-          done
-          if [ "$ready" != true ]; then
-            echo 'Pages is not serving the expected release.'
-            exit 1
-          fi
-          echo 'Verified index.html' | tee test-results/live-assets.log
-          # Verify every published asset, not only index.html. Pages/CDN can
-          # briefly serve mixed revisions after a successful deployment.
-          for file in 'spa.js?v=05r' 'spa.css?v=05r' 'phase04/journey.mjs?v=05r' phase03/{clients,facial-state,skin-view}.mjs phase04/expressions.mjs phase05/*.mjs assets/*; do
-            local_file=${file%%\?*}
-            separator='?'
-            if [[ $file == *\?* ]]; then separator='&'; fi
-            matched=false
-            for attempt in $(seq 1 48); do
-              if curl -fsSL --retry 2 --max-time 15 "${SPA_URL}$file${separator}release=${GITHUB_SHA}&attempt=$attempt" -o "$response" &&
-                 cmp -s "$local_file" "$response"; then
-                matched=true
-                break
-              fi
-              if [ "$attempt" -eq 1 ]; then
-                echo "Waiting for public $file to match commit $GITHUB_SHA" | tee -a test-results/live-assets.log
-                sha256sum "$local_file" "$response" | tee -a test-results/live-assets.log
-              fi
-              sleep 5
-            done
-            if [ "$matched" != true ]; then
-              echo "Public asset mismatch after retries: $file" | tee -a test-results/live-assets.log
-              cmp "$local_file" "$response" || true
-              exit 1
-            fi
-            echo "Verified $file" | tee -a test-results/live-assets.log
-          done
-      - name: Play nine sessions on the official site
-        shell: bash
-        run: node --test --test-reporter=tap phase04/browser.test.mjs | tee test-results/report.tap
+          node --test --test-concurrency=1 --test-reporter=tap phase04/browser.test.mjs phase06/browser.test.mjs | tee test-results/report.tap
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase05r-live
+          name: dream-spa-phase06ap-live-${{ matrix.viewport }}
           path: test-results/
-          if-no-files-found: warn
+          if-no-files-found: error
