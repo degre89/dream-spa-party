@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
+import { captureSpeech } from '../.github/scripts/speech.mjs';
 import { clients } from '../phase03/clients.mjs';
 import { MASK_TOOLS } from '../phase03/facial-state.mjs';
 import { products } from './products.mjs';
@@ -63,7 +64,6 @@ for (const [width, height, touch] of devices) {
     const waitForPercent = value => el('#meter[aria-valuenow="' + value + '"]').waitFor();
     const activeFace = '#spa .portrait';
     const reaction = activeFace + ' .reaction-face';
-    const facePNG = () => el(reaction).evaluate(canvas => canvas.toDataURL());
 
     async function stroke(points, held) {
       const box = await el('#mask').boundingBox();
@@ -230,12 +230,9 @@ for (const [width, height, touch] of devices) {
           await step(1, count);
           assert.equal(await stars(), String(total));
           if (record) {
-            await tap('#repeatHint');
-            await el(activeFace + '[data-mouth="1"]').waitFor();
-            const first = await facePNG();
-            await el(activeFace + '[data-mouth="2"]').waitFor();
-            assert.notEqual(await facePNG(), first);
-            assert.equal(await el(activeFace + ' .hero').evaluate(image => getComputedStyle(image).opacity), '0');
+            const frames = await captureSpeech(el(activeFace));
+            assert.ok(frames.changed, 'both speaking frames change the portrait pixels');
+            assert.ok(frames.heroHidden, 'the speaking canvas replaces the original portrait');
             await shot(id + '-talk');
             await el(activeFace + ':not([data-mouth])').waitFor();
             await shot(id + '-neutral', activeFace);
