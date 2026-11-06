@@ -1,6 +1,6 @@
 const definitions = {
   cleanser: [
-    ['strawberry', 'Fragola', '#ff769e', '#c72c60', '🍓', '✦'],
+    ['strawberry', 'Fragola', '#ff769e', '#c72c60', '●', '🍓'],
     ['peach', 'Pesca', '#ffc394', '#df7040', '○', '◌'],
     ['lavender', 'Lavanda', '#d9b5ff', '#874cbb', '❋', '❋'],
     ['coconut', 'Cocco', '#f7ffff', '#76c6e5', '◒', '○'],

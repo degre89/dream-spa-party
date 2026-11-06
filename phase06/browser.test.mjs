@@ -124,7 +124,7 @@ for (const [width, height, touch] of devices) {
         } else {
           await el('.product-particle').filter({ hasText: variant.effect.glyph }).first().waitFor({ timeout: 1000 });
         }
-        if (recordProducts) await shot('effect-' + variant.id);
+        if (recordProducts) await page.screenshot({ path: dir + '/effect-' + variant.id + '.png' });
       });
     }
 
@@ -199,7 +199,7 @@ for (const [width, height, touch] of devices) {
       await shot('collection-bottom');
 
       if (await el('#steamModels').count()) {
-        variantCatalog = await page.evaluate(async () => (await import('/phase06/products.mjs')).products);
+        variantCatalog = await page.evaluate(async () => (await import(new URL('phase06/products.mjs', document.baseURI))).products);
       }
       let total = 41;
       for (const id of Object.keys(probes)) {

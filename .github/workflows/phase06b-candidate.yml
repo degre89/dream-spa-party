@@ -28,6 +28,10 @@ jobs:
           python3 -m http.server 8000 --bind 127.0.0.1 > test-results/server.log 2>&1 &
           server=$!
           trap 'kill "$server"' EXIT
+          for attempt in {1..20}; do
+            if curl -fsS http://127.0.0.1:8000/ > /dev/null; then break; fi
+            sleep 1
+          done
           node --test --test-concurrency=1 --test-reporter=tap phase04/browser.test.mjs phase06/browser.test.mjs | tee test-results/report.tap
       - uses: actions/upload-artifact@v4
         if: always()
