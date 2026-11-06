@@ -1,3 +1,5 @@
+import { CLIENT_PRICE, createWallet, SAVE_KEY } from './phase06/wallet.mjs?v=06c';
+import { mountShop } from './phase06/shop.mjs?v=06c';
 import { products } from './phase06/products.mjs?v=06b';
 import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
 import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=06a';
@@ -18,6 +20,13 @@ const productPanel = $('#productPanel');
 const productOptions = $('#productOptions');
 const productBack = $('#productBack');
 const productChoices = Object.fromEntries(Object.entries(products).map(([category, variants]) => [category, variants[0]]));
+const wallet = createWallet();
+const ownsClient = id => clients[id].unlock.type === 'free' || wallet.state.clients.includes(id);
+const ownsProduct = variant => variant.availability === 'free' || wallet.state.products.includes(variant.id);
+for (const [category, variants] of Object.entries(products)) {
+  productChoices[category] = variants.find(variant => ownsProduct(variant) &&
+    variant.id === wallet.state.choices[category]) ?? productChoices[category];
+}
 const categoryButtons = {};
 const cart = $('#cart');
 const cartToggle = $('#cartToggle');
@@ -44,13 +53,6 @@ const tools = {
   patches: { name: 'le patch', label: 'Patch occhi', icon: true, hint: 'Metti una patch sotto ogni occhio.' },
   cream: { name: 'la crema', label: 'Crema', icon: true, hint: 'Massaggia la crema sulla pelle pulita.' }
 };
-
-let stars = 0;
-try {
-  const saved = Number(localStorage.getItem('dsp-stars'));
-  if (Number.isSafeInteger(saved) && saved >= 0) stars = saved;
-} catch {}
-$('#stars').textContent = stars;
 
 let client, skin, journey, selected;
 let portrait = $('#home .portrait');
@@ -201,8 +203,13 @@ function showProducts(category, trigger) {
     button.dataset.variant = variant.id;
     button.setAttribute('aria-pressed', String(productChoices[category] === variant));
     button.append(productGraphic(variant), variant.name);
+    if (!ownsProduct(variant)) {
+      button.disabled = true;
+      button.append(' · Negozio');
+    }
     bindAction(button, () => {
-      if (journey.pending) return;
+      if (journey.pending || !ownsProduct(variant)) return;
+      void wallet.choose(category, variant);
       productChoices[category] = variant;
       trigger.querySelector('img')?.replaceWith(productGraphic(variant));
       if (guided) {
@@ -423,16 +430,19 @@ function nextStep() {
     render();
     return;
   }
-  stars += 3;
-  try { localStorage.setItem('dsp-stars', String(stars)); } catch {}
-  $('#stars').textContent = stars;
-  $('#totalStars').textContent = '★ ' + stars;
+  const reward = wallet.reward();
+  $('#done .reward').textContent = 'Hai guadagnato 3 stelle!';
+  reward.then(result => {
+    syncWallet();
+    if (result !== 'ok') $('#done .reward').textContent = 'Impossibile salvare le stelline in questo browser.';
+  });
   setPortrait($('#done .portrait'), client.id);
   show('done');
   compare(false);
 }
 
 function start(id) {
+  if (!ownsClient(id)) return;
   skin = stencils.get(id);
   if (!skin) return;
   client = { ...clients[id], id };
@@ -489,8 +499,8 @@ for (const [id, profile] of Object.entries(clients)) {
   bindAction(button, () => start(id));
   loadStencil('assets/' + profile.stencil, width, height).then(stencil => {
     stencils.set(id, stencil);
-    button.disabled = false;
-    $('#play').disabled = false;
+    syncWallet();
+    if (ownsClient(id)) $('#play').disabled = false;
   }).catch(() => {
     $('#chooseStatus').textContent = 'Un ritratto non è disponibile. Ricarica la pagina per riprovare.';
     if (!stencils.size) $('#status').textContent = 'Caricamento non riuscito. Ricarica la pagina.';
@@ -638,3 +648,37 @@ reducedMotion.addEventListener('change', () => {
 });
 scheduleBlink();
 
+
+function syncWallet() {
+  $('#stars').textContent = wallet.state.balance;
+  $('#totalStars').textContent = '★ ' + wallet.state.balance;
+  for (const button of clientList.querySelectorAll('button')) {
+    const id = button.dataset.client;
+    const unlocked = ownsClient(id);
+    button.disabled = !unlocked || !stencils.has(id);
+    button.querySelector('span').textContent = clients[id].name + (unlocked ? '' : ' · ' + CLIENT_PRICE + ' ★');
+  }
+}
+
+const shop = mountShop({ wallet, clients, products, productGraphic, changed: syncWallet });
+let shopReturn;
+for (const [selector, screen] of [['#openShop', 'home'], ['#chooseShop', 'choose']]) {
+  bindAction($(selector), () => {
+    shopReturn = { selector, screen };
+    show('shop');
+    shop.open();
+    $('#shopTitle').focus();
+  });
+}
+bindAction($('#shopBack'), () => {
+  show(shopReturn.screen);
+  $(shopReturn.selector).focus();
+});
+window.addEventListener('storage', event => {
+  if (event.key !== SAVE_KEY && event.key !== null) return;
+  wallet.refresh();
+  syncWallet();
+  shop.refresh();
+});
+syncWallet();
+wallet.initialize().then(syncWallet);

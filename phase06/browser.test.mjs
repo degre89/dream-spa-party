@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { clients } from '../phase03/clients.mjs';
 import { MASK_TOOLS } from '../phase03/facial-state.mjs';
+import { products } from './products.mjs';
 import { probes } from './geometry.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
@@ -31,7 +32,13 @@ for (const [width, height, touch] of devices) {
     page.on('console', message => {
       if (message.type() === 'error' && !message.location().url.endsWith('/favicon.ico')) errors.push(message.text());
     });
-    await page.addInitScript(() => {
+    await page.addInitScript(({ clientIds, productIds }) => {
+      // Exercise the original gameplay matrix with a fully unlocked test collection.
+      if (!localStorage.getItem('dsp-progress')) {
+        localStorage.setItem('dsp-progress', JSON.stringify({
+          version: 1, balance: 41, earned: 41, clients: clientIds, products: productIds,
+        }));
+      }
       if (localStorage.getItem('dsp-stars') === null) localStorage.setItem('dsp-stars', '41');
       const random = crypto.getRandomValues.bind(crypto);
       crypto.getRandomValues = array => {
@@ -39,7 +46,7 @@ for (const [width, height, touch] of devices) {
         array[0] = window.testSeed ?? 5;
         return array;
       };
-    });
+    }, { clientIds: Object.keys(clients), productIds: Object.values(products).flat().map(item => item.id) });
 
     const el = selector => page.locator(selector);
     const shot = (name, selector) => (selector ? el(selector) : page).screenshot({

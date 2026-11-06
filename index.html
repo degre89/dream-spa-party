@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#592754">
   <title>Dream Spa Party</title>
-  <link rel="stylesheet" href="spa.css?v=06b">
-  <script type="module" src="spa.js?v=06b"></script>
+  <link rel="stylesheet" href="spa.css?v=06c">
+  <script type="module" src="spa.js?v=06c"></script>
 </head>
 <body>
 <main class="app">
@@ -15,14 +15,46 @@
     <h1>Dream <span>Spa Party</span></h1>
     <p class="tagline">Il tuo salone magico</p>
     <div class="stage"><div class="portrait"><img class="hero" src="assets/girl.webp" alt="La protagonista con un fiocco rosa" draggable="false"><img class="expression eyelids" src="assets/eyelids.svg" alt="" draggable="false"><img class="expression grin" src="assets/smile.svg" alt="" draggable="false"></div></div>
-    <footer><button class="cta" id="play" disabled>▶ Gioca</button><p id="status" role="status">La tua prima giornata alla Spa!</p></footer>
+    <footer><div class="home-actions"><button class="cta" id="play" disabled>▶ Gioca</button><button class="pill" id="openShop">✦ Negozio</button></div><p id="status" role="status">La tua prima giornata alla Spa!</p></footer>
   </section>
   <section class="screen" id="choose">
-    <header class="top"><button class="pill" id="chooseHome">⌂ Home</button><span class="pill">✿ Le clienti</span></header>
+    <header class="top"><button class="pill" id="chooseHome">⌂ Home</button><button class="pill" id="chooseShop">✦ Negozio</button></header>
     <h2>Scegli una cliente</h2>
     <p class="tagline">Chi coccoliamo oggi?</p>
     <div class="clients" role="group" aria-label="Clienti disponibili"></div>
     <p id="chooseStatus" role="status"></p>
+  </section>
+  <section class="screen" id="shop" aria-labelledby="shopTitle">
+    <header class="top shop-top"><button class="pill" id="shopBack">‹ Indietro</button><span class="pill shop-balance">★ <output id="shopStars" aria-label="Saldo stelline">0</output></span></header>
+    <div class="shop-hero">
+      <span class="shop-sparkles" aria-hidden="true">✧ ✦ ✧</span>
+      <h2 id="shopTitle" tabindex="-1">Dream Spa Shop</h2>
+      <p>Scegli le tue prossime coccole!</p>
+    </div>
+    <section class="shop-gift" aria-labelledby="giftTitle">
+      <div class="gift-art" aria-hidden="true"><span></span></div>
+      <div>
+        <h3 id="giftTitle">Regalo del giorno</h3>
+        <p id="giftStatus"></p>
+        <button class="cta" id="claimGift">Ritira regalo</button>
+      </div>
+    </section>
+    <nav class="shop-nav" aria-label="Reparti del negozio">
+      <button class="pill" id="shopClientsTab" aria-pressed="true">Nuove clienti</button>
+      <button class="pill" id="shopProductsTab" aria-pressed="false">Prodotti magici</button>
+    </nav>
+    <p id="shopStatus" role="status" tabindex="-1"></p>
+    <div id="shopCatalog"></div>
+    <p class="shop-note">I progressi si salvano in questo browser.</p>
+    <dialog id="shopConfirm" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+      <h3 id="confirmTitle"></h3>
+      <div id="confirmArt"></div>
+      <p id="confirmText"></p>
+      <div class="shop-nav">
+        <button class="pill" id="cancelPurchase" autofocus>Annulla</button>
+        <button class="cta" id="confirmPurchase">Sblocca</button>
+      </div>
+    </dialog>
   </section>
   <section class="screen" id="spa">
     <header class="top"><button class="pill" id="back">⌂ Home</button><span class="pill" id="step"></span></header>
