@@ -1,4 +1,4 @@
-import { mountMakeup } from './phase08/studio.mjs?v=08a';
+import { mountMakeup } from './phase08/studio.mjs?v=08ar';
 import { mountHub } from './phase07/hub.mjs?v=08a';
 import { createWallet, SAVE_KEY } from './phase06/wallet.mjs?v=07b';
 import { mountShop } from './phase06/shop.mjs?v=07b';

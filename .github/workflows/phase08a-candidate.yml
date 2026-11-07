@@ -1,7 +1,7 @@
 name: Phase 08-A candidate browser checks
 on:
   push:
-    branches: [development/phase08a-magic-makeup]
+    branches: [development/phase08a-magic-makeup, development/phase08ar-soft-eyeshadow-gloss]
   workflow_dispatch:
 permissions:
   contents: read

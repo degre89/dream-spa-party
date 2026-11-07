@@ -1,7 +1,7 @@
 import { clients } from '../phase03/clients.mjs?v=07a';
 import { drawExpression } from '../phase04/expressions.mjs?v=08a';
-import { palettes } from './geometry.mjs';
-import { createLook, allowed, createPaintView } from './paint.mjs';
+import { palettes } from './geometry.mjs?v=08ar';
+import { createLook, allowed, createPaintView } from './paint.mjs?v=08ar';
 
 export function mountMakeup({ onHome, bindAction }) {
   const get = id => document.getElementById('studio' + id);
@@ -24,7 +24,7 @@ export function mountMakeup({ onHome, bindAction }) {
   let active = null, stroke = null, previous = null, preview = null;
   let closed = false, result = false, blinkTimer, openTimer, effect;
   let loadVersion = 0, pendingConfirmation, shineFrame;
-  let shineTime = 0;
+  let shinePulse = 0;
 
   const selected = () => palettes[category].colors[choice];
   const checkpoint = () => {
@@ -63,10 +63,16 @@ export function mountMakeup({ onHome, bindAction }) {
 
   function redraw() {
     if (!look || !image) return;
-    drawPortrait();
+    if (!result) drawPortrait();
     portrait.dataset.eyes = closed ? 'closed' : 'open';
     paint.rebuild(look, closed);
-    paint.draw(look, preview, shineTime);
+    compose();
+    get('Undo').disabled = !histories.get(client).length;
+  }
+
+  function compose() {
+    if (result) drawPortrait();
+    paint.draw(look, preview, shinePulse);
     if (result) {
       // Warp the finished composite together so lips and pigment keep alignment.
       faceContext.drawImage(surface, 0, 0, 768, 960);
@@ -74,7 +80,6 @@ export function mountMakeup({ onHome, bindAction }) {
       faceContext.putImageData(drawExpression(faceContext, original, client, true), 0, 0);
       context.clearRect(0, 0, 512, 640);
     }
-    get('Undo').disabled = !histories.get(client).length;
   }
 
   function cancelBlink() {
@@ -176,7 +181,6 @@ export function mountMakeup({ onHome, bindAction }) {
       controls();
       redraw();
       scheduleBlink();
-      animateShine();
       get('Title').focus({ preventScroll: true });
       window.scrollTo(0, 0);
     } catch {
@@ -197,7 +201,6 @@ export function mountMakeup({ onHome, bindAction }) {
   }
 
   function selectionView() {
-    cancelAnimationFrame(shineFrame);
     ++loadVersion;
     stopGesture();
     cancelBlink();
@@ -239,9 +242,9 @@ export function mountMakeup({ onHome, bindAction }) {
     stroke.points.push(...valid);
     // Incremental stamps have the same result as replaying the session record.
     paint.append(client, { ...stroke, points: valid });
-    paint.draw(look, null, shineTime);
+    paint.draw(look, null, shinePulse);
     get('Undo').disabled = false;
-    shimmer(valid.at(-1));
+    if (stroke.category !== 'lips' || stroke.color !== null) shimmer(valid.at(-1));
   }
   function interpolate(from, to) {
     const distance = Math.hypot(to[0] - from[0], to[1] - from[1]);
@@ -257,12 +260,13 @@ export function mountMakeup({ onHome, bindAction }) {
   }
   function previewAt(position) {
     preview = decorationAt(position);
-    paint.draw(look, preview, shineTime);
+    paint.draw(look, preview, shinePulse);
   }
 
   surface.addEventListener('pointerdown', event => {
     if (result || active !== null || (event.pointerType === 'mouse' && event.button !== 0)) return;
     event.preventDefault();
+    stopShine();
     cancelBlink();
     redraw();
     active = event.pointerId;
@@ -296,12 +300,15 @@ export function mountMakeup({ onHome, bindAction }) {
         shimmer([x, y]);
       } else if (decoration) full = true;
     }
+    const appliedGloss = stroke?.category === 'lips' && stroke.color === null;
     stopGesture();
+    if (appliedGloss) animateShine();
     announceChoice();
     if (full) get('Choice').textContent = 'Hai già 6 decori. Toccane uno per toglierlo.';
     scheduleBlink();
   });
   function stopGesture() {
+    stopShine();
     const pointer = active;
     active = null;
     stroke = null;
@@ -318,11 +325,11 @@ export function mountMakeup({ onHome, bindAction }) {
   });
   window.addEventListener('blur', stopGesture);
   document.addEventListener('visibilitychange', () => {
-    stopGesture();
     cancelBlink();
-    if (!document.hidden) { scheduleBlink(); animateShine(); }
+    stopGesture();
+    if (!document.hidden) scheduleBlink();
   });
-  reduced.addEventListener('change', () => { cancelBlink(); effect?.cancel(); redraw(); scheduleBlink(); animateShine(); });
+  reduced.addEventListener('change', () => { cancelBlink(); stopShine(); effect?.cancel(); redraw(); scheduleBlink(); });
 
   bindAction(get('Undo'), () => {
     stopGesture();
@@ -357,27 +364,37 @@ export function mountMakeup({ onHome, bindAction }) {
     get('Result').hidden = false;
     redraw();
     shimmer([256, 175]);
+    if (look.strokes.some(item => item.category === 'lips' && item.color === null)) animateShine();
     get('Result').querySelector('h3').focus({ preventScroll: true });
   });
   bindAction(get('Resume'), () => {
+    stopShine();
     result = false;
     get('Tools').hidden = false;
     get('Result').hidden = true;
     redraw();
     scheduleBlink();
   });
-  let lastShine = 0;
-  function animateShine(time = 0) {
+  function stopShine() {
     cancelAnimationFrame(shineFrame);
-    if (!reduced.matches && !document.hidden && !editor.hidden && look?.strokes.some(item => item.category === 'lips' && item.color === null)) {
-      if (time - lastShine > 120 && active === null && !closed) {
-        shineTime = time / 950;
-        if (result) redraw();
-        else paint.draw(look, preview, shineTime);
-        lastShine = time;
+    shinePulse = 0;
+  }
+
+  function animateShine() {
+    stopShine();
+    if (reduced.matches || document.hidden) return;
+    const started = performance.now();
+    let lastDraw = started;
+    function frame(now) {
+      const progress = Math.min(1, (now - started) / 960);
+      if (now - lastDraw >= 100 || progress === 1) {
+        shinePulse = Math.sin(Math.PI * progress);
+        compose();
+        lastDraw = now;
       }
+      if (progress < 1) shineFrame = requestAnimationFrame(frame);
     }
-    if (!editor.hidden && !reduced.matches && !document.hidden) shineFrame = requestAnimationFrame(animateShine);
+    shineFrame = requestAnimationFrame(frame);
   }
   window.addEventListener('beforeunload', event => {
     if ([...looks.values()].some(item => !item.completed && (item.strokes.length || item.decorations.length))) event.preventDefault();

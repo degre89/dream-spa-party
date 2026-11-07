@@ -102,10 +102,11 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         assert.equal((await pixels([rightPoint]))[0][3], 0, 'other eyelid stays clean');
         await stroke(right);
         assert.ok((await pixels([rightPoint]))[0][3] > 0);
-        const pink = (await pixels([shadowPoint]))[0];
+        const [pink, untouchedEye] = await pixels([shadowPoint, rightPoint]);
         await color('Turchese');
         await stroke(left);
         assert.notDeepEqual((await pixels([shadowPoint]))[0], pink, 'color changes where stroked');
+        assert.deepEqual((await pixels([rightPoint]))[0], untouchedEye, 'changing one eyelid preserves the other');
         await shot(client + '-tavolozza');
         await tap('#studioUndo');
         assert.deepEqual((await pixels([shadowPoint]))[0], pink, 'undo restores exact pigment');
@@ -134,6 +135,13 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await color('Lilla');
         await stroke(left);
         await stroke(right);
+        if (viewport === '412x915') {
+          for (const name of ['Azzurro cielo', 'Viola', 'Oro perlato']) {
+            await color(name);
+            await stroke(left);
+            await shot(client + '-ombretto-' + name.toLowerCase().replace(' ', '-'));
+          }
+        }
         await tool('blush');
         assert.equal(await el('#studioPalette button').count(), 4);
         await color('Pesca');
@@ -141,6 +149,17 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         assert.ok((await pixels([[181, 343], [331, 343]])).every(p => p[3] > 0));
         await tool('lips');
         assert.equal(await el('#studioPalette button').count(), 5);
+        const lip = [256, 393];
+        const corner = [289, 381];
+        await color('Gloss trasparente');
+        assert.deepEqual(await pixels([lip, corner]), [[0, 0, 0, 0], [0, 0, 0, 0]]);
+        await stroke(sweep(244, 391, 13));
+        const naturalGloss = await pixels([lip, corner, [256, 409]]);
+        assert.ok(naturalGloss[0][3] > 0, 'gloss appears under the applicator');
+        assert.deepEqual(naturalGloss.slice(1), [[0, 0, 0, 0], [0, 0, 0, 0]]);
+        await page.waitForTimeout(180);
+        assert.deepEqual(await pixels([lip, corner, [256, 409]]), naturalGloss, 'reduced motion keeps a steady sheen');
+        await clear();
         await color('Fucsia');
         await stroke(sweep(225, 382, 60));
         assert.ok((await pixels([[256, 380], [256, 393]])).every(p => p[3] > 0));
@@ -172,14 +191,14 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await stroke([[190, 282]]);
         assert.equal(await sumAlpha(), beforeInvalid, 'eye rejects decoration');
         await shot(client + '-dopo');
-        let blink = 'reduced motion';
-        if (viewport === '412x915') {
+        assert.equal(await el('#studioPortrait').getAttribute('data-eyes'), 'open');
+        {
           const closed = page.waitForFunction(() => document.querySelector('#studioPortrait').dataset.eyes === 'closed', null, { timeout: 7000 });
           await page.emulateMedia({ reducedMotion: 'no-preference' });
           await closed;
           await page.waitForFunction(() => document.querySelector('#studioPortrait').dataset.eyes === 'open');
           await page.emulateMedia({ reducedMotion: 'reduce' });
-          blink = 'closed and reopened with makeup';
+          assert.equal(await el('#studioPortrait').getAttribute('data-eyes'), 'open');
         }
         const clipping = (await pixels([[256, 345], [190, 285], [325, 285], [256, 90], [400, 200]])).every(p => p[3] === 0);
         assert.ok(clipping, 'finished look keeps independently selected protected pixels clear');
@@ -210,7 +229,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await tap('#studioFinish');
         await tap('#studioClients');
         await el('#studioSelection:not([hidden])').waitFor();
-        checks.push({ client, progressiveAlpha: [first, second], clipping, blink, savedSession: true, complete: true });
+        checks.push({ client, progressiveAlpha: [first, second], clipping, blink: true, reducedMotion: true, savedSession: true, complete: true });
       }
       await tap('#studioHome');
       await el('#home.on').waitFor();

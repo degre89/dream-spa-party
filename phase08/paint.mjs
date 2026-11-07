@@ -1,4 +1,5 @@
-import { faces, palettes } from './geometry.mjs';
+import { faces, palettes } from './geometry.mjs?v=08ar';
+import { createShadowFinish, drawGloss, makeupBuffer } from './finish.mjs?v=08ar';
 
 // One versioned session record per client. Coordinates remain in portrait units.
 export function createLook(client) {
@@ -25,23 +26,23 @@ export function allowed(context, client, category, x, y, closed = false) {
   return regions(client, category, closed).some(path => context.isPointInPath(path, x, y));
 }
 
-function dot(context, x, y, radius, color) {
+function dot(context, x, y, radius, color, sheer) {
   const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
-  gradient.addColorStop(0, color + '40');
-  gradient.addColorStop(.55, color + '26');
+  gradient.addColorStop(0, color + (sheer ? '22' : '40'));
+  gradient.addColorStop(.55, color + (sheer ? '13' : '26'));
   gradient.addColorStop(1, color + '00');
   context.fillStyle = gradient;
   context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
 
-export function paintStroke(context, client, stroke, closed = false) {
+function paintStroke(context, client, stroke) {
   const { category, color, points } = stroke;
-  const paths = regions(client, category, closed);
+  const paths = regions(client, category);
   for (const path of paths) {
     context.save();
     context.clip(path);
     for (const [x, y] of points) {
-      dot(context, x, y, palettes[category].radius, color ?? '#ffffff');
+      dot(context, x, y, palettes[category].radius, color ?? '#ffffff', category === 'shadow');
     }
     context.restore();
   }
@@ -91,10 +92,10 @@ export function createPaintView(context) {
   const softened = document.createElement('canvas');
   softened.width = 512;
   softened.height = 640;
-  const shine = document.createElement('canvas');
-  shine.width = 512;
-  shine.height = 640;
-  const light = shine.getContext('2d');
+  const light = makeupBuffer();
+  const shadowFinish = createShadowFinish(regions);
+  let shadowImage = null;
+  let closedEyes = false;
   let featherClient;
   function feather(client) {
     if (featherClient === client) return;
@@ -114,17 +115,24 @@ export function createPaintView(context) {
     }
   }
   const layerKey = stroke => stroke.category === 'lips' && stroke.color === null ? 'gloss' : stroke.category;
-  function append(client, stroke, closed = false) {
-    paintStroke(layers.get(layerKey(stroke)).getContext('2d'), client, stroke, closed);
+  function append(client, stroke) {
+    paintStroke(layers.get(layerKey(stroke)).getContext('2d'), client, stroke);
+    if (stroke.category === 'shadow') shadowImage = null;
   }
   function rebuild(look, closed = false) {
+    closedEyes = closed;
+    shadowImage = null;
     for (const canvas of layers.values()) canvas.getContext('2d').clearRect(0, 0, 512, 640);
-    for (const stroke of look.strokes) append(look.client, stroke, closed);
+    for (const stroke of look.strokes) append(look.client, stroke);
   }
-  function draw(look, preview, time = 0) {
+  function draw(look, preview, pulse = 0) {
     context.clearRect(0, 0, 512, 640);
     for (const [key, layer] of layers) {
       let visible = layer;
+      if (key === 'shadow') {
+        shadowImage ??= shadowFinish(look.client, layer, closedEyes);
+        visible = shadowImage;
+      }
       if (key === 'blush') {
         feather(look.client);
         const soft = softened.getContext('2d');
@@ -136,23 +144,14 @@ export function createPaintView(context) {
         visible = softened;
       }
       context.save();
-      context.globalAlpha = { shadow: .63, blush: .65, lips: .64, gloss: .23 }[key];
+      context.globalAlpha = { shadow: .82, blush: .65, lips: .64, gloss: .04 }[key];
       context.drawImage(visible, 0, 0);
       context.restore();
     }
     // The gloss highlight is clipped to pigment actually applied by the player.
     if (look.strokes.some(stroke => layerKey(stroke) === 'gloss')) {
-      light.clearRect(0, 0, 512, 640);
-      light.globalCompositeOperation = 'source-over';
-      light.fillStyle = '#fff6ff';
-      light.globalAlpha = .2 + .12 * Math.sin(time);
-      light.beginPath();
-      light.ellipse(255, look.client === 'sofia' ? 393 : 392, 14, 1.2, -.05, 0, Math.PI * 2);
-      light.fill();
-      light.globalCompositeOperation = 'destination-in';
-      light.globalAlpha = 1;
-      light.drawImage(layers.get('gloss'), 0, 0);
-      context.drawImage(shine, 0, 0);
+      drawGloss(light, look.client, layers.get('gloss'), pulse);
+      context.drawImage(light.canvas, 0, 0);
     }
     for (const decoration of look.decorations) drawDecoration(context, decoration);
     if (preview) drawDecoration(context, preview, true);
