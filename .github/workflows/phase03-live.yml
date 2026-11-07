@@ -1,4 +1,4 @@
-name: Phase 06-CP live Pages checks
+name: Phase 07-A live Pages checks
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase06cp-live-assets
+          name: dream-spa-phase07a-live-assets
           path: test-results/
           if-no-files-found: error
 
@@ -61,10 +61,10 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p test-results
-          node --test --test-concurrency=1 --test-reporter=tap phase04/browser.test.mjs phase06/browser.test.mjs phase06/shop.browser.test.mjs | tee test-results/report.tap
+          node --test --test-concurrency=1 --test-reporter=tap phase04/browser.test.mjs phase06/browser.test.mjs phase06/shop.browser.test.mjs phase06/wallet.test.mjs | tee test-results/report.tap
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase06cp-live-${{ matrix.viewport }}
+          name: dream-spa-phase07a-live-${{ matrix.viewport }}
           path: test-results/
           if-no-files-found: error

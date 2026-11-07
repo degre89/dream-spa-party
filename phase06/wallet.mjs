@@ -1,8 +1,21 @@
+import { products } from './products.mjs?v=06b';
+
 export const SAVE_KEY = 'dsp-progress';
 export const GIFT = 10;
 export const SESSION_REWARD = 3;
 export const PRODUCT_PRICES = { cleanser: 25, cream: 25, sponge: 30, steamer: 35 };
-export const CLIENT_PRICE = 80;
+// Frozen Phase 06-C prices for verifying the spend recorded by version 1.
+const formerClientPrices = new Map(['martina', 'federica', 'rachele', 'ginevra', 'chiara'].map(id => [id, 80]));
+const formerProductPrices = new Map([
+  ['cleanser-peach', 25], ['cleanser-lavender', 25], ['cleanser-coconut', 25],
+  ['cream-vanilla', 25], ['cream-aloe', 25], ['cream-blueberry', 25],
+  ['sponge-heart', 30], ['sponge-flower', 30], ['sponge-star', 30],
+  ['steamer-stars', 35], ['steamer-cloud', 35], ['steamer-pearl', 35],
+]);
+
+const shopPrices = new Map(Object.values(products).flat()
+  .filter(variant => variant.availability !== 'free')
+  .map(variant => [variant.id, PRODUCT_PRICES[variant.category]]));
 
 const legacyKey = 'dsp-stars';
 const validAmount = value => Number.isSafeInteger(value) && value >= 0;
@@ -13,6 +26,16 @@ const dateKey = date => [String(date.getFullYear()).padStart(4, '0'), date.getMo
 export function giftAvailable(state, now = new Date()) {
   return Number.isFinite(+now) && +now >= state.lastGiftAt &&
     (!state.lastGiftDay || dateKey(now) > state.lastGiftDay);
+}
+
+function clientRefund(saved, clients, products) {
+  if (saved?.version !== 1 || !validAmount(saved.balance) || !validAmount(saved.earned) ||
+      !clients.length || !Array.isArray(saved.products) ||
+      saved.clients.length !== clients.length || saved.products.length !== products.length ||
+      !clients.every(id => formerClientPrices.has(id)) || !products.every(id => formerProductPrices.has(id))) return 0;
+  const clientSpend = clients.reduce((sum, id) => sum + formerClientPrices.get(id), 0);
+  const productSpend = products.reduce((sum, id) => sum + formerProductPrices.get(id), 0);
+  return saved.earned - saved.balance === clientSpend + productSpend ? clientSpend : 0;
 }
 
 export function createWallet() {
@@ -26,13 +49,16 @@ export function createWallet() {
       if (validAmount(raw)) legacy = raw;
       saved = JSON.parse(localStorage.getItem(SAVE_KEY));
     } catch {}
-    const balance = validAmount(saved?.balance) ? saved.balance : legacy;
+    const clients = ids(saved?.clients);
+    const products = ids(saved?.products);
+    const refund = clientRefund(saved, clients, products);
+    const balance = validAmount(saved?.balance) ? saved.balance + refund : legacy;
     return {
-      version: 1,
+      version: 2,
       balance,
       earned: Math.max(balance, validAmount(saved?.earned) ? saved.earned : balance),
-      clients: ids(saved?.clients),
-      products: ids(saved?.products),
+      clients,
+      products,
       lastGiftDay: typeof saved?.lastGiftDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.lastGiftDay) ? saved.lastGiftDay : null,
       lastGiftAt: validAmount(saved?.lastGiftAt) ? saved.lastGiftAt : 0,
       choices: saved?.choices && typeof saved.choices === 'object' && !Array.isArray(saved.choices) ? saved.choices : {},
@@ -84,12 +110,14 @@ export function createWallet() {
         return result;
       });
     },
-    buy({ kind, id, price }) {
+    buy({ id }) {
       return change(draft => {
-        if (draft[kind].includes(id)) return 'owned';
+        const price = shopPrices.get(id);
+        if (price === undefined) return 'unavailable';
+        if (draft.products.includes(id)) return 'owned';
         if (draft.balance < price) return 'insufficient';
         draft.balance -= price;
-        draft[kind].push(id);
+        draft.products.push(id);
         return 'ok';
       });
     },

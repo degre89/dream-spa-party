@@ -1,5 +1,5 @@
-import { clients } from './clients.mjs?v=06a';
-import { drawEyePatches, drawEyeShadow } from '../phase05/eye-patches.mjs?v=06a';
+import { clients } from './clients.mjs?v=07a';
+import { drawEyePatches, drawEyeShadow } from '../phase05/eye-patches.mjs?v=07a';
 
 // Paint the state model's cells, then clip every layer with the client's stencil.
 const materials = {

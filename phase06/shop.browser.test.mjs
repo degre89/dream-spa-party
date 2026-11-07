@@ -32,18 +32,34 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
 
     try {
       await page.addInitScript(() => {
-        if (!localStorage.getItem('dsp-stars')) localStorage.setItem('dsp-stars', '165');
+        if (!localStorage.getItem('dsp-stars')) localStorage.setItem('dsp-stars', '0');
       });
       await at('2026-11-06T22:59:00Z');
       await page.goto(baseURL);
       await el('#play:enabled').waitFor();
-      assert.equal(await el('#stars').innerText(), '165');
-      await page.reload();
+      assert.equal(await el('#stars').innerText(), '0');
       await tap('#play');
-      await el('.client[data-client="alice"]:enabled').waitFor();
-      assert.equal(await el('.client:enabled').count(), 4);
-      assert.equal(await el('.client:disabled').count(), 5);
-      await tap('#chooseShop');
+      await page.waitForFunction(() => document.querySelectorAll('.client:enabled').length === 10);
+      assert.equal(await el('.client').count(), 10);
+      assert.equal(await el('.client[data-client="azzurrina"]').innerText(), 'Azzurrina');
+      await tap('.client[data-client="azzurrina"]');
+      await el('#spa.on .portrait[data-client="azzurrina"]').waitFor();
+      await page.evaluate(key => {
+        localStorage.setItem(key, JSON.stringify({
+          version: 1, balance: 85, earned: 200, clients: ['martina'],
+          products: ['steamer-stars'], choices: { steamer: 'steamer-stars' },
+        }));
+      }, SAVE_KEY);
+      const secondMigration = await context.newPage();
+      await Promise.all([page.reload(), secondMigration.goto(baseURL)]);
+      await secondMigration.close();
+      await el('#stars').filter({ hasText: /^165$/ }).waitFor();
+      assert.equal((await saved()).version, 2);
+      assert.equal((await saved()).earned, 200);
+      assert.deepEqual((await saved()).clients, ['martina']);
+      assert.equal((await saved()).choices.steamer, 'steamer-stars');
+      await page.reload();
+      await tap('#openShop');
       await balance(165);
       assert.ok(await el('#shopStars').evaluate(node => {
         const { left, right, top, bottom } = node.getBoundingClientRect();
@@ -51,61 +67,47 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       }));
       assert.equal(await el('.gift-art').evaluate(node => getComputedStyle(node).animationName), 'gift-bob');
       await shot('01-shop-regalo-disponibile');
-      await el('[data-shop-item="martina"]').scrollIntoViewIfNeeded();
-      await shot('02-nuove-clienti');
-      await tap('[data-shop-item="martina"]');
-      assert.match(await el('#confirmText').innerText(), /80/);
-      assert.ok(await el('#confirmArt img').evaluate(async image => { await image.decode(); return image.naturalWidth; }));
-      await shot('03-conferma-acquisto');
-      await tap('#cancelPurchase');
-      await balance(165);
-      await tap('[data-shop-item="martina"]');
-      await tap('#confirmPurchase');
-      await balance(85);
-      assert.equal(await el('[data-shop-item="martina"]').count(), 0);
-      assert.equal(await page.evaluate(async () => {
-        const { createWallet, CLIENT_PRICE } = await import(new URL('phase06/wallet.mjs', document.baseURI));
-        return createWallet().buy({ kind: 'clients', id: 'martina', price: CLIENT_PRICE });
-      }), 'owned');
-      await el('#shopStatus').filter({ hasText: 'Martina' }).waitFor();
-      await el('.shop-card').filter({ hasText: 'Martina' }).scrollIntoViewIfNeeded();
-      await shot('04-cliente-sbloccata');
+      assert.equal(await el('.shop-clients .shop-card').count(), 10);
+      assert.equal(await el('.shop-clients .shop-buy, .shop-clients .shop-price').count(), 0);
+      await shot('02-le-tue-clienti');
       await tap('#claimGift');
       await el('.gift-art.gift-opened').waitFor();
       assert.equal(await el('.gift-art').evaluate(node => getComputedStyle(node).animationName), 'gift-pop');
-      await balance(95);
+      await balance(175);
       assert.ok(await el('#claimGift').isDisabled());
       assert.match(await el('#giftStatus').innerText(), /già ritirato/);
       await shot('05-regalo-ritirato');
       await tap('#shopProductsTab');
       await shot('06-prodotti-magici');
-      await tap('[data-shop-item="steamer-stars"]');
-      await tap('#confirmPurchase');
-      await balance(60);
-      await el('#shopStatus').filter({ hasText: 'Lilla con stelline' }).waitFor();
-      await el('.shop-card').filter({ hasText: 'Lilla con stelline' }).scrollIntoViewIfNeeded();
-      await shot('07-prodotto-sbloccato');
-
-      for (const [id, amount] of [['cleanser-peach', 35], ['sponge-heart', 5]]) {
+      assert.equal(await el('[data-shop-item="steamer-stars"]').count(), 0);
+      await tap('[data-shop-item="cleanser-peach"]');
+      assert.match(await el('#confirmText').innerText(), /25/);
+      await tap('#cancelPurchase');
+      await balance(175);
+      for (const [id, amount] of [['cleanser-peach', 150], ['sponge-heart', 120], ['cream-vanilla', 95], ['steamer-cloud', 60]]) {
         await tap('[data-shop-item="' + id + '"]');
         await tap('#confirmPurchase');
         await balance(amount);
         assert.equal(await el('[data-shop-item="' + id + '"]').count(), 0);
       }
-      await tap('#shopClientsTab');
-      await tap('[data-shop-item="federica"]');
+      assert.deepEqual(await page.evaluate(async () => {
+        const { createWallet } = await import(new URL('phase06/wallet.mjs', document.baseURI));
+        return createWallet().buy({ id: 'steamer-cloud', price: 35 });
+      }), 'owned');
+      await tap('[data-shop-item="steamer-pearl"]');
+      await tap('#confirmPurchase');
+      await balance(25);
+      await tap('[data-shop-item="sponge-star"]');
       assert.ok(await el('#confirmPurchase').isDisabled());
-      assert.match(await el('#confirmText').innerText(), /75/);
       await tap('#cancelPurchase');
-      await balance(5);
-
       await page.reload();
       await tap('#openShop');
-      await balance(5);
+      await balance(25);
       assert.ok(await el('#claimGift').isDisabled());
       assert.deepEqual((await saved()).clients, ['martina']);
-      assert.deepEqual((await saved()).products, ['steamer-stars', 'cleanser-peach', 'sponge-heart']);
-      assert.equal((await saved()).earned, 175);
+      assert.deepEqual((await saved()).products,
+        ['steamer-stars', 'cleanser-peach', 'sponge-heart', 'cream-vanilla', 'steamer-cloud', 'steamer-pearl']);
+      assert.equal((await saved()).earned, 210);
       await at('2026-11-06T21:30:00Z');
       assert.equal(await page.evaluate(async () => {
         const { createWallet } = await import(new URL('phase06/wallet.mjs', document.baseURI));
@@ -114,7 +116,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       await at('2026-11-06T23:00:00Z');
       await el('#claimGift:enabled').waitFor();
       await tap('#claimGift');
-      await balance(15);
+      await balance(35);
       await at('2026-11-11T12:00:00Z');
       const second = await context.newPage();
       second.on('pageerror', error => errors.push(error.message));
@@ -128,24 +130,24 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       await second.close();
       await page.reload();
       await tap('#openShop');
-      await balance(25);
+      await balance(45);
       await tap('#shopBack');
       await tap('#play');
       await tap('.client[data-client="martina"]');
       await el('#spa.on .portrait[data-client="martina"]').waitFor();
       await tap('#steamModels');
       assert.ok(await el('[data-variant="steamer-stars"]').isEnabled());
-      assert.ok(await el('[data-variant="steamer-cloud"]').isDisabled());
-      await tap('[data-variant="steamer-stars"]');
-      await el('[data-variant="steamer-stars"]').waitFor({ state: 'hidden' });
-      await page.waitForFunction(key => JSON.parse(localStorage.getItem(key)).choices.steamer === 'steamer-stars', SAVE_KEY);
+      assert.ok(await el('[data-variant="steamer-cloud"]').isEnabled());
+      await tap('[data-variant="steamer-cloud"]');
+      await el('[data-variant="steamer-cloud"]').waitFor({ state: 'hidden' });
+      await page.waitForFunction(key => JSON.parse(localStorage.getItem(key)).choices.steamer === 'steamer-cloud', SAVE_KEY);
       const proof = await saved();
       await page.evaluate(key => localStorage.setItem(key, '{invalid'), SAVE_KEY);
       await page.reload();
       await el('#play:enabled').waitFor();
-      assert.equal(await el('#stars').innerText(), '25');
+      assert.equal(await el('#stars').innerText(), '45');
       assert.deepEqual(errors, []);
-      await writeFile(dir + '/proof.json', JSON.stringify({ migrated: 165, final: proof, corruptedBalanceRecovery: 25, errors }, null, 2));
+      await writeFile(dir + '/proof.json', JSON.stringify({ refunded: 80, final: proof, corruptedBalanceRecovery: 45, errors }, null, 2));
     } catch (error) {
       await shot('failure').catch(() => {});
       throw error;

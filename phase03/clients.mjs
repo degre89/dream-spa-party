@@ -1,10 +1,8 @@
-// Object keys are stable IDs for future ownership records. Unlock data is
-// descriptive only. This phase neither reads nor stores client ownership.
+// Client IDs are stable.
 // Regions and stencils share the original 512 × 640 portrait coordinate system.
 export const clients = {
   sofia: {
     name: 'Sofia', portrait: 'girl.webp', stencil: 'skin.svg', eyelids: 'eyelids.svg',
-    unlock: { type: 'free', price: null },
     openings: ['spot', 'pores', 'redness'],
     patchAnchors: [[181, 344], [331, 344]],
     palette: { redness: [225, 64, 100], pores: '#8f3855' },
@@ -14,7 +12,6 @@ export const clients = {
   },
   emma: {
     name: 'Emma', portrait: 'emma.webp', stencil: 'skin-emma.svg?v=04e', eyelids: 'eyelids-emma.svg',
-    unlock: { type: 'free', price: null },
     openings: ['redness', 'spot', 'pores'],
     patchAnchors: [[184, 330], [326, 330]],
     palette: { redness: [208, 54, 91], pores: '#81344f' },
@@ -24,7 +21,6 @@ export const clients = {
   },
   maya: {
     name: 'Maya', portrait: 'maya.webp', stencil: 'skin-maya.svg?v=04e', eyelids: 'eyelids-maya.svg',
-    unlock: { type: 'free', price: null },
     openings: ['pores', 'redness', 'spot'],
     patchAnchors: [[184, 345], [330, 345]],
     shadowTone: '76,28,65',
@@ -35,7 +31,6 @@ export const clients = {
   },
   alice: {
     name: 'Alice', portrait: 'alice.webp', stencil: 'skin-alice.svg', eyelids: 'eyelids-alice.svg',
-    unlock: { type: 'free', price: null },
     openings: ['spot', 'redness', 'pores'],
     patchAnchors: [[188, 328], [328, 328]],
     palette: { redness: [220, 63, 98], pores: '#853747' },
@@ -45,7 +40,6 @@ export const clients = {
   },
   martina: {
     name: 'Martina', portrait: 'martina.webp', stencil: 'skin-martina.svg', eyelids: 'eyelids-martina.svg',
-    unlock: { type: 'stars', price: null },
     openings: ['redness', 'spot', 'pores'],
     patchAnchors: [[190, 324], [326, 324]],
     palette: { redness: [235, 87, 105], pores: '#713047' },
@@ -56,7 +50,6 @@ export const clients = {
   },
   federica: {
     name: 'Federica', portrait: 'federica.webp', stencil: 'skin-federica.svg', eyelids: 'eyelids-federica.svg',
-    unlock: { type: 'stars', price: null },
     openings: ['pores', 'redness', 'spot'],
     patchAnchors: [[187, 325], [326, 325]],
     palette: { redness: [216, 64, 104], pores: '#913c51' },
@@ -66,7 +59,6 @@ export const clients = {
   },
   rachele: {
     name: 'Rachele', portrait: 'rachele.webp', stencil: 'skin-rachele.svg', eyelids: 'eyelids-rachele.svg',
-    unlock: { type: 'stars', price: null },
     openings: ['spot', 'pores', 'redness'],
     patchAnchors: [[195, 325], [319, 325]],
     palette: { redness: [224, 77, 104], pores: '#783044' },
@@ -77,7 +69,6 @@ export const clients = {
   },
   ginevra: {
     name: 'Ginevra', portrait: 'ginevra.webp', stencil: 'skin-ginevra.svg', eyelids: 'eyelids-ginevra.svg',
-    unlock: { type: 'stars', price: null },
     openings: ['redness', 'pores', 'spot'],
     patchAnchors: [[187, 326], [324, 326]],
     palette: { redness: [214, 62, 101], pores: '#873551' },
@@ -87,7 +78,6 @@ export const clients = {
   },
   chiara: {
     name: 'Chiara', portrait: 'chiara.webp', stencil: 'skin-chiara.svg', eyelids: 'eyelids-chiara.svg',
-    unlock: { type: 'stars', price: null },
     openings: ['pores', 'spot', 'redness'],
     patchAnchors: [[191, 328], [324, 328]],
     palette: { redness: [225, 72, 102], pores: '#84354b' },
@@ -95,5 +85,14 @@ export const clients = {
     landmarks: { mouth: [256, 381, 47, 15], eyes: [[190, 282, 40, 27], [323, 282, 40, 27]],
       brows: [[194, 233, 37, 10], [321, 234, 35, 10]] },
     regions: [[256, 194, 36], [177, 346, 28], [335, 346, 28], [256, 338, 25], [256, 412, 17]]
+  },
+  azzurrina: {
+    name: 'Azzurrina', portrait: 'azzurrina.webp', stencil: 'skin-azzurrina.svg', eyelids: 'eyelids-azzurrina.svg',
+    openings: ['spot', 'redness', 'pores'],
+    patchAnchors: [[190, 327], [320, 327]],
+    palette: { redness: [220, 69, 103], pores: '#8a3b55' },
+    landmarks: { mouth: [257, 385, 47, 14], eyes: [[191, 282, 41, 27], [322, 282, 42, 27]],
+      brows: [[198, 233, 34, 10], [317, 231, 37, 10]] },
+    regions: [[255, 193, 36], [181, 345, 28], [331, 345, 28], [256, 336, 25], [256, 419, 17]]
   }
 };

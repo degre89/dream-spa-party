@@ -1,12 +1,12 @@
-import { CLIENT_PRICE, createWallet, SAVE_KEY } from './phase06/wallet.mjs?v=06c';
-import { mountShop } from './phase06/shop.mjs?v=06c';
+import { createWallet, SAVE_KEY } from './phase06/wallet.mjs?v=07a';
+import { mountShop } from './phase06/shop.mjs?v=07a';
 import { products } from './phase06/products.mjs?v=06b';
 import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
-import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=06a';
-import { drawFace } from './phase04/expressions.mjs?v=06a';
-import { clients } from './phase03/clients.mjs?v=06a';
-import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=06a';
-import { patchStage } from './phase05/eye-patches.mjs?v=06a';
+import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=07a';
+import { drawFace } from './phase04/expressions.mjs?v=07a';
+import { clients } from './phase03/clients.mjs?v=07a';
+import { createSkinView, loadStencil } from './phase03/skin-view.mjs?v=07a';
+import { patchStage } from './phase05/eye-patches.mjs?v=07a';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#mask');
@@ -21,7 +21,6 @@ const productOptions = $('#productOptions');
 const productBack = $('#productBack');
 const productChoices = Object.fromEntries(Object.entries(products).map(([category, variants]) => [category, variants[0]]));
 const wallet = createWallet();
-const ownsClient = id => clients[id].unlock.type === 'free' || wallet.state.clients.includes(id);
 const ownsProduct = variant => variant.availability === 'free' || wallet.state.products.includes(variant.id);
 for (const [category, variants] of Object.entries(products)) {
   productChoices[category] = variants.find(variant => ownsProduct(variant) &&
@@ -442,7 +441,6 @@ function nextStep() {
 }
 
 function start(id) {
-  if (!ownsClient(id)) return;
   skin = stencils.get(id);
   if (!skin) return;
   client = { ...clients[id], id };
@@ -499,8 +497,8 @@ for (const [id, profile] of Object.entries(clients)) {
   bindAction(button, () => start(id));
   loadStencil('assets/' + profile.stencil, width, height).then(stencil => {
     stencils.set(id, stencil);
-    syncWallet();
-    if (ownsClient(id)) $('#play').disabled = false;
+    button.disabled = false;
+    $('#play').disabled = false;
   }).catch(() => {
     $('#chooseStatus').textContent = 'Un ritratto non è disponibile. Ricarica la pagina per riprovare.';
     if (!stencils.size) $('#status').textContent = 'Caricamento non riuscito. Ricarica la pagina.';
@@ -652,12 +650,6 @@ scheduleBlink();
 function syncWallet() {
   $('#stars').textContent = wallet.state.balance;
   $('#totalStars').textContent = '★ ' + wallet.state.balance;
-  for (const button of clientList.querySelectorAll('button')) {
-    const id = button.dataset.client;
-    const unlocked = ownsClient(id);
-    button.disabled = !unlocked || !stencils.has(id);
-    button.querySelector('span').textContent = clients[id].name + (unlocked ? '' : ' · ' + CLIENT_PRICE + ' ★');
-  }
 }
 
 const shop = mountShop({ wallet, clients, products, productGraphic, changed: syncWallet });

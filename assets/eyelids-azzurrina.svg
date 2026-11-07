@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="640" viewBox="0 0 512 640">
+  <defs>
+    <linearGradient id="lid" x2="0" y2="1"><stop stop-color="#f2aa92"/><stop offset=".65" stop-color="#ffc5ad"/><stop offset="1" stop-color="#eea590"/></linearGradient>
+    <filter id="edge"><feGaussianBlur stdDeviation="1.4"/></filter>
+  </defs>
+  <path fill="url(#lid)" filter="url(#edge)" d="M146 277 C151 257 175 251 196 253 C218 255 231 273 233 304 C210 311 182 311 164 301 C154 295 149 284 146 277Z M282 304 C284 274 294 256 314 252 C339 250 360 258 366 276 C363 291 354 302 343 306 C325 311 302 310 282 304Z"/>
+  <path d="M152 279 Q185 306 225 294 M290 294 Q332 306 360 278" fill="none" stroke="#653b37" stroke-width="3" stroke-linecap="round"/>
+</svg>

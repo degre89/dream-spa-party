@@ -1,4 +1,4 @@
-import { CLIENT_PRICE, GIFT, PRODUCT_PRICES, giftAvailable } from './wallet.mjs?v=06c';
+import { GIFT, PRODUCT_PRICES, giftAvailable } from './wallet.mjs?v=07a';
 
 const categoryNames = { cleanser: 'Detergenti', cream: 'Creme', sponge: 'Spugnette', steamer: 'Vaporizzatori' };
 
@@ -14,8 +14,8 @@ export function mountShop({ wallet, clients, products, productGraphic, changed }
   let pending, opener;
   let claiming = false;
 
-  const clientItems = Object.entries(clients).map(([id, profile]) => ({
-    id, kind: 'clients', name: profile.name, price: profile.unlock.type === 'free' ? 0 : CLIENT_PRICE,
+  const clientItems = Object.values(clients).map(profile => ({
+    name: profile.name,
     art() {
       const image = document.createElement('img');
       image.src = 'assets/' + profile.portrait;
@@ -25,7 +25,7 @@ export function mountShop({ wallet, clients, products, productGraphic, changed }
   }));
   const productGroups = Object.entries(products).map(([category, variants]) => [
     categoryNames[category], variants.map(variant => ({
-      id: variant.id, kind: 'products', name: variant.name,
+      id: variant.id, name: variant.name,
       price: variant.availability === 'free' ? 0 : PRODUCT_PRICES[category],
       art: () => productGraphic(variant),
     })),
@@ -52,11 +52,16 @@ export function mountShop({ wallet, clients, products, productGraphic, changed }
       art.append(item.art());
       const name = document.createElement('h4');
       name.textContent = item.name;
+      card.append(art, name);
+      if (department === 'clients') {
+        grid.append(card);
+        continue;
+      }
       const price = document.createElement('span');
-      const owned = wallet.state[item.kind].includes(item.id);
+      const owned = wallet.state.products.includes(item.id);
       price.className = 'shop-price';
       price.textContent = !item.price ? 'Gratis' : owned ? '✓ Sbloccato' : '★ ' + item.price;
-      card.append(art, name, price);
+      card.append(price);
       if (item.price && !owned) {
         const button = document.createElement('button');
         button.className = 'pill shop-buy';
@@ -80,7 +85,7 @@ export function mountShop({ wallet, clients, products, productGraphic, changed }
   function render() {
     $('#shopStars').textContent = wallet.state.balance;
     availableGift();
-    const groups = department === 'clients' ? [['Nuove clienti', clientItems]] : productGroups;
+    const groups = department === 'clients' ? [['Le tue clienti', clientItems]] : productGroups;
     catalog.replaceChildren(...groups.map(([title, items]) => renderGroup(title, items)));
   }
 

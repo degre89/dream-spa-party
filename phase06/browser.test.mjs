@@ -16,7 +16,7 @@ const openingTools = { spot: 'gel', redness: 'serum', pores: 'brush' };
 for (const [width, height, touch] of devices) {
   const viewport = `${width}x${height}`;
   if (process.env.SPA_VIEWPORT && process.env.SPA_VIEWPORT !== viewport) continue;
-  test(`${viewport} · ${touch ? 'touch' : 'mouse'} · collection and six new clients`, { timeout: 540000 }, async () => {
+  test(`${viewport} · ${touch ? 'touch' : 'mouse'} · collection and complete sessions`, { timeout: 540000 }, async () => {
     const dir = `test-results/collection/${viewport}`;
     await mkdir(dir, { recursive: true });
     const browser = await chromium.launch(process.env.SPA_CHROME_PATH ?
@@ -33,11 +33,11 @@ for (const [width, height, touch] of devices) {
     page.on('console', message => {
       if (message.type() === 'error' && !message.location().url.endsWith('/favicon.ico')) errors.push(message.text());
     });
-    await page.addInitScript(({ clientIds, productIds }) => {
-      // Exercise the original gameplay matrix with a fully unlocked test collection.
+    await page.addInitScript((productIds) => {
+      // Pre-own product variants while exercising free access for every client.
       if (!localStorage.getItem('dsp-progress')) {
         localStorage.setItem('dsp-progress', JSON.stringify({
-          version: 1, balance: 41, earned: 41, clients: clientIds, products: productIds,
+          version: 1, balance: 41, earned: 41, clients: [], products: productIds,
         }));
       }
       if (localStorage.getItem('dsp-stars') === null) localStorage.setItem('dsp-stars', '41');
@@ -47,7 +47,7 @@ for (const [width, height, touch] of devices) {
         array[0] = window.testSeed ?? 5;
         return array;
       };
-    }, { clientIds: Object.keys(clients), productIds: Object.values(products).flat().map(item => item.id) });
+    }, Object.values(products).flat().filter(item => item.availability !== 'free').map(item => item.id));
 
     const el = selector => page.locator(selector);
     const shot = (name, selector) => (selector ? el(selector) : page).screenshot({
@@ -186,7 +186,7 @@ for (const [width, height, touch] of devices) {
       await el('#play:enabled').waitFor();
       await tap('#play');
       const buttons = el('.client');
-      assert.equal(await buttons.count(), 9);
+      assert.equal(await buttons.count(), 10);
       const expectedNames = Object.values(clients).map(profile => profile.name);
       assert.deepEqual(await buttons.allTextContents(), expectedNames);
       for (const button of await buttons.all()) {
@@ -205,6 +205,14 @@ for (const [width, height, touch] of devices) {
       await buttons.last().scrollIntoViewIfNeeded();
       await shot('collection-bottom');
 
+      await el('#choose').evaluate(screen => {
+        screen.style.position = 'relative';
+        screen.style.height = 'max-content';
+        screen.style.overflow = 'visible';
+      });
+      await shot('collection-all', '#choose');
+      await el('#choose').evaluate(screen => screen.removeAttribute('style'));
+
       if (await el('#steamModels').count()) {
         variantCatalog = await page.evaluate(async () => (await import(new URL('phase06/products.mjs', document.baseURI))).products);
       }
@@ -220,7 +228,7 @@ for (const [width, height, touch] of devices) {
           const opening = sequence[1];
           const record = scenario === 0;
           variantIndex = scenario;
-          recordProducts = id === Object.keys(probes)[0];
+          recordProducts = id === 'azzurrina';
           await page.evaluate(seed => { window.testSeed = seed; }, seed);
           await tap(`.client[data-client="${id}"]`);
           await el(`${activeFace}[data-client="${id}"]`).waitFor();
