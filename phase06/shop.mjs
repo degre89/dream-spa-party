@@ -1,8 +1,8 @@
-import { GIFT, PRODUCT_PRICES, giftAvailable } from './wallet.mjs?v=07a';
+import { GIFT, PRODUCT_PRICES, giftAvailable } from './wallet.mjs?v=07b';
 
 const categoryNames = { cleanser: 'Detergenti', cream: 'Creme', sponge: 'Spugnette', steamer: 'Vaporizzatori' };
 
-export function mountShop({ wallet, clients, products, productGraphic, changed }) {
+export function mountShop({ wallet, clients, products, productGraphic, changed, bindAction }) {
   const $ = selector => document.querySelector(selector);
   const catalog = $('#shopCatalog');
   const status = $('#shopStatus');
@@ -68,7 +68,7 @@ export function mountShop({ wallet, clients, products, productGraphic, changed }
         button.dataset.shopItem = item.id;
         button.textContent = 'Sblocca';
         button.setAttribute('aria-label', 'Sblocca ' + item.name + ' per ' + item.price + ' stelline');
-        button.addEventListener('click', () => preview(item, button));
+        bindAction(button, () => preview(item, button));
         card.append(button);
         if (wallet.state.balance < item.price) {
           const missing = document.createElement('small');
@@ -102,12 +102,12 @@ export function mountShop({ wallet, clients, products, productGraphic, changed }
     confirm.showModal();
   }
 
-  $('#cancelPurchase').addEventListener('click', () => confirm.close());
+  bindAction($('#cancelPurchase'), () => confirm.close());
   confirm.addEventListener('close', () => {
     pending = undefined;
     if (opener?.isConnected) opener.focus({ preventScroll: true });
   });
-  buy.addEventListener('click', async () => {
+  bindAction(buy, async () => {
     if (!pending || buy.disabled) return;
     buy.disabled = true;
     const item = pending;
@@ -123,7 +123,7 @@ export function mountShop({ wallet, clients, products, productGraphic, changed }
     status.focus();
   });
 
-  claim.addEventListener('click', async () => {
+  bindAction(claim, async () => {
     if (claiming || !giftAvailable(wallet.state)) return;
     claiming = true;
     availableGift();
@@ -143,7 +143,7 @@ export function mountShop({ wallet, clients, products, productGraphic, changed }
 
   const tabs = { clients: $('#shopClientsTab'), products: $('#shopProductsTab') };
   for (const [id, tab] of Object.entries(tabs)) {
-    tab.addEventListener('click', () => {
+    bindAction(tab, () => {
       department = id;
       status.textContent = '';
       for (const [key, button] of Object.entries(tabs)) button.setAttribute('aria-pressed', String(id === key));

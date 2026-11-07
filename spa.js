@@ -1,6 +1,6 @@
 import { mountHub } from './phase07/hub.mjs?v=07b';
 import { createWallet, SAVE_KEY } from './phase06/wallet.mjs?v=07b';
-import { mountShop } from './phase06/shop.mjs?v=07a';
+import { mountShop } from './phase06/shop.mjs?v=07b';
 import { products } from './phase06/products.mjs?v=06b';
 import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
 import { acceptsTool, advanceJourney, applyGesture, beginCleanserRinse, createJourney, currentAction, currentStep, journeyPercent } from './phase04/journey.mjs?v=07a';
@@ -656,7 +656,7 @@ function syncWallet() {
 }
 
 const hub = mountHub({ wallet, onSkinCare: () => show('choose'), changed: syncWallet, bindAction });
-const shop = mountShop({ wallet, clients, products, productGraphic, changed: syncWallet });
+const shop = mountShop({ wallet, clients, products, productGraphic, changed: syncWallet, bindAction });
 let shopReturn;
 for (const [selector, screen] of [['#openShop', 'home'], ['#chooseShop', 'choose']]) {
   bindAction($(selector), () => {

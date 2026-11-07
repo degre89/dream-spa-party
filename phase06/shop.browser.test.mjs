@@ -81,7 +81,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       await shot('06-prodotti-magici');
       assert.equal(await el('[data-shop-item="steamer-stars"]').count(), 0);
       await tap('[data-shop-item="cleanser-peach"]');
-      assert.match(await el('#confirmText').innerText(), /25/);
+      await el('#shopConfirm[open] #confirmText').filter({ hasText: /25/ }).waitFor();
       await tap('#cancelPurchase');
       await balance(175);
       for (const [id, amount] of [['cleanser-peach', 150], ['sponge-heart', 120], ['cream-vanilla', 95], ['steamer-cloud', 60]]) {
