@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+const shadowColors = ['Rosa confetto', 'Lilla', 'Azzurro cielo', 'Turchese', 'Viola', 'Oro perlato',
+  'Verde menta', 'Pesca perlato', 'Argento lunare'];
+const finishes = ['Soft', 'Pearl', 'Sparkle'];
+const decals = ['Stellina', 'Cuoricino', 'Farfallina', 'Brillantino', 'Luna', 'Fiorellino', 'Gemma', 'Petalo'];
 const { chromium } = createRequire(import.meta.url)('playwright');
 
 // Independent sample points from the original portraits, in 512 × 640 units.
@@ -21,7 +25,7 @@ const clients = {
 for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280, 720, false]]) {
   const viewport = width + 'x' + height;
   if (process.env.SPA_VIEWPORT && process.env.SPA_VIEWPORT !== viewport) continue;
-  test(viewport + ' interactive makeup · ten clients', { timeout: 480000 }, async () => {
+  test(viewport + ' interactive makeup · ten clients', { timeout: 900000 }, async () => {
     const dir = 'test-results/makeup/' + viewport;
     await mkdir(dir, { recursive: true });
     const browser = await chromium.launch(process.env.SPA_CHROME_PATH ?
@@ -75,14 +79,17 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       }
     }
     const sweep = (x, y, length = 26) => Array.from({ length: 9 }, (_, i) => [x - length / 2 + length * i / 8, y]);
+    const finish = name => tap('#studioFinishes button:text-is("' + name + '")');
+    const imageBytes = selector => el(selector).evaluate(canvas => canvas.toDataURL());
+    const paintBytes = () => imageBytes('#studioPaint');
     const eyeState = () => el('#studioPortrait').getAttribute('data-eyes');
     async function tool(id) { await tap('#studioCategories [data-category="' + id + '"]'); }
     async function color(label) { await tap('#studioPalette button[aria-label="' + label + '"]'); }
     async function clear() { await tap('#studioClear'); }
-    const maskLeaks = (id, closed) => page.evaluate(async ({ id, closed }) => {
+    const maskLeaks = (id, closed, category = 'shadow') => page.evaluate(async ({ id, closed, category }) => {
       const { regions } = await import('./phase08/paint.mjs');
       const c = document.querySelector('#studioPaint').getContext('2d');
-      const masks = regions(id, 'shadow', closed);
+      const masks = regions(id, category, closed);
       const data = c.getImageData(0, 0, 512, 640).data;
       let leaks = 0;
       for (let y = 0; y < 640; y++) for (let x = 0; x < 512; x++) {
@@ -92,7 +99,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
           .some(([dx, dy]) => c.isPointInPath(mask, x + dx, y + dy)))) leaks++;
       }
       return leaks;
-    }, { id, closed });
+    }, { id, closed, category });
     try {
       await page.addInitScript(() => {
         localStorage.setItem('dsp-stars', '55');
@@ -123,9 +130,24 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await select(client);
         assert.equal(await sumAlpha(), 0, 'look starts empty for each client');
         await portraitShot(client, 'prima');
+        const portraitMatches = await page.evaluate(async id => {
+          const { clients } = await import('./phase03/clients.mjs');
+          const portrait = document.querySelector('#studioPortrait');
+          const image = new Image();
+          image.src = 'assets/' + clients[id].portrait;
+          await image.decode();
+          const canvas = document.createElement('canvas');
+          canvas.width = portrait.width;
+          canvas.height = portrait.height;
+          canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+          return canvas.toDataURL() === portrait.toDataURL();
+        }, client);
+        assert.ok(portraitMatches, 'editor loads the original portrait');
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width);
         await tool('shadow');
-        assert.equal(await el('#studioPalette button').count(), 6);
+        assert.deepEqual(await el('#studioPalette button').evaluateAll(buttons =>
+          buttons.map(button => button.getAttribute('aria-label'))), shadowColors);
+        await finish('Soft');
         const left = sweep(...shadowPoint);
         const right = sweep(...rightPoint);
         assert.equal((await pixels([shadowPoint]))[0][3], 0, 'selection alone applies no product');
@@ -144,6 +166,9 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         assert.ok((await pixels([rightPoint]))[0][3] > 0);
         const [pink, untouchedEye] = await pixels([shadowPoint, rightPoint]);
         await color('Turchese');
+        await finish('Sparkle');
+        assert.deepEqual((await pixels([shadowPoint, rightPoint])), [pink, untouchedEye],
+          'choosing a finish never modifies existing strokes');
         await stroke(left);
         assert.notDeepEqual((await pixels([shadowPoint]))[0], pink, 'color changes where stroked');
         assert.deepEqual((await pixels([rightPoint]))[0], untouchedEye, 'changing one eyelid preserves the other');
@@ -165,15 +190,66 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await clear();
         assert.equal(await sumAlpha(), 0);
 
+        const shadowRenders = [];
+        for (const name of finishes) {
+          await color('Viola');
+          await finish(name);
+          await stroke(left);
+          await stroke(right);
+          shadowRenders.push(await paintBytes());
+          await portraitShot(client, 'ombretto-' + name);
+          await clear();
+        }
+        assert.equal(new Set(shadowRenders).size, finishes.length, 'three static eyeshadow finishes');
+        if (viewport === '412x915') {
+          await finish('Soft');
+          for (const [index, name] of shadowColors.entries()) {
+            await color(name);
+            await stroke(left);
+            await stroke(right);
+            await portraitShot(client, 'tonalita-' + (index + 1));
+            await clear();
+          }
+        }
         await color('Lilla');
+        await finish('Pearl');
         await stroke(left);
+        await finish('Sparkle');
         await stroke(right);
         await tool('blush');
         assert.equal(await el('#studioPalette button').count(), 4);
         await color('Pesca');
+        const eyesOnly = await paintBytes();
+        await finish('Soft');
         for (const cheek of cheeks) await stroke(sweep(...cheek));
         assert.ok((await pixels(cheeks)).every(p => p[3] > 0));
-        await portraitShot(client, 'guance');
+        const softCheeks = await paintBytes();
+        await portraitShot(client, 'blush-Soft');
+        await clear();
+        assert.equal(await paintBytes(), eyesOnly, 'blush clearing preserves finished eyeshadow');
+        await finish('Pearl');
+        for (const cheek of cheeks) await stroke(sweep(...cheek));
+        const pearlCheeks = await paintBytes();
+        assert.notEqual(pearlCheeks, softCheeks);
+        await clear();
+        await finish('Sparkle');
+        for (const cheek of cheeks) await stroke(sweep(...cheek));
+        const sparkleCheeks = await paintBytes();
+        assert.notEqual(sparkleCheeks, pearlCheeks);
+        await tap('#studioHearts');
+        for (const cheek of cheeks) await stroke(sweep(...cheek));
+        const fantasyCheeks = await paintBytes();
+        assert.notEqual(fantasyCheeks, sparkleCheeks);
+        await portraitShot(client, 'blush-Fantasy');
+        await tap('#studioUndo');
+        await tap('#studioUndo');
+        assert.equal(await paintBytes(), sparkleCheeks, 'undo removes both heart strokes exactly');
+        for (const cheek of cheeks) await stroke(sweep(...cheek));
+        assert.equal(await paintBytes(), fantasyCheeks, 'identical gestures replay deterministically');
+        await clear();
+        assert.equal(await paintBytes(), eyesOnly, 'category clear also removes hearts and sparkles');
+        await tap('#studioUndo');
+        await tap('#studioHearts');
         await tool('lips');
         assert.equal(await el('#studioPalette button').count(), 5);
         await color('Gloss trasparente');
@@ -185,18 +261,42 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await page.waitForTimeout(180);
         assert.deepEqual(await pixels([lip, corner, belowLip]), naturalGloss, 'reduced motion keeps a steady sheen');
         await clear();
-        await color('Fucsia');
-        await stroke(sweep(cx, upper, 54));
-        await stroke(sweep(cx, lower, 40));
+        const lipstickRenders = [];
+        for (const name of finishes) {
+          await color('Fucsia');
+          await finish(name);
+          await stroke(sweep(cx, upper, 54));
+          await stroke(sweep(cx, lower, 40));
+          lipstickRenders.push(await paintBytes());
+          await portraitShot(client, 'labbra-' + name);
+          if (name !== 'Sparkle') await clear();
+        }
+        assert.equal(new Set(lipstickRenders).size, finishes.length, 'three static lipstick finishes');
         assert.ok((await pixels([[cx, upper], lip])).every(p => p[3] > 0), client + ' lipstick covers both lips');
         assert.equal((await pixels([belowLip]))[0][3], 0);
         const beforeGloss = (await pixels([lip]))[0];
+        const lipstick = await paintBytes();
         await color('Gloss trasparente');
         await stroke(sweep(cx, lower, 50));
         assert.notDeepEqual((await pixels([lip]))[0], beforeGloss);
-        await portraitShot(client, 'labbra');
+        await portraitShot(client, 'labbra-gloss');
+        await tap('#studioUndo');
+        assert.equal(await paintBytes(), lipstick, 'undoing gloss restores the finished lipstick exactly');
+        await stroke(sweep(cx, lower, 50));
         await tool('jewels');
-        assert.equal(await el('#studioPalette button').count(), 4);
+        assert.deepEqual(await el('#studioPalette button').evaluateAll(buttons =>
+          buttons.map(button => button.getAttribute('aria-label'))), decals);
+        const decorRenders = [];
+        for (const [index, name] of decals.entries()) {
+          await color(name);
+          await stroke([jewels[2]]);
+          decorRenders.push(await paintBytes());
+          await portraitShot(client, 'decoro-' + (index + 1));
+          await stroke([jewels[2]]);
+          assert.match(await el('#studioChoice').innerText(), /0\/6/);
+        }
+        assert.equal(new Set(decorRenders).size, decals.length, 'all eight decorations have a distinct rendered shape');
+        await color('Stellina');
         const noDecor = await pixels([jewels[0]]);
         await stroke([jewels[0]], async () => {
           assert.notDeepEqual(await pixels([jewels[0]]), noDecor, 'preview appears before release');
@@ -243,6 +343,10 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await tap('#studioConfirm form button');
         await el('#studioEditor:not([hidden])').waitFor();
         const beforeNavigation = await sumAlpha();
+        const beforeResize = await paintBytes();
+        await page.setViewportSize({ width: width + 12, height: height + 22 });
+        assert.equal(await paintBytes(), beforeResize, 'resize preserves the exact Canvas contents');
+        await page.setViewportSize({ width, height });
         await tap('#studioClients');
         await tap('#studioConfirmAction');
         await tap('#studioCards [data-client="' + client + '"]');
@@ -266,7 +370,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await tap('#studioFinish');
         await tap('#studioClients');
         await el('#studioSelection:not([hidden])').waitFor();
-        checks.push({ client, progressiveAlpha: [first, second], clipping, blink: true, reducedMotion: true, savedSession: true, complete: true });
+        checks.push({ client, originalPortrait: true, shadowColors: 9, finishes: 3, microhearts: true, decorations: 8, resize: true, progressiveAlpha: [first, second], clipping, blink: true, reducedMotion: true, savedSession: true, complete: true });
       }
       await tap('#studioHome');
       await el('#home.on').waitFor();

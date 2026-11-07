@@ -1,4 +1,5 @@
-import { faces, palettes } from './geometry.mjs?v=08b1';
+import { decorations, decorationDetails, stampFinish } from './fantasy.mjs?v=08b2';
+import { faces, palettes } from './geometry.mjs?v=08b2';
 import { createShadowFinish, drawGloss, makeupBuffer } from './finish.mjs?v=08b1';
 
 // One versioned session record per client. Coordinates remain in portrait units.
@@ -43,6 +44,7 @@ function paintStroke(context, client, stroke) {
     context.clip(path);
     for (const [x, y] of points) {
       dot(context, x, y, palettes[category].radius, color ?? '#ffffff', category === 'shadow');
+      stampFinish(context, stroke, x, y);
     }
     context.restore();
   }
@@ -57,21 +59,13 @@ export function drawDecoration(context, item, preview = false) {
   context.fillStyle = item.color;
   context.strokeStyle = '#fff5db';
   context.lineWidth = .8;
-  const shapes = {
-    '★': 'M0 -9 2.6 -3 9 -2.8 4 1.6 5.5 8 0 4.5 -5.5 8 -4 1.6 -9 -2.8 -2.6 -3Z',
-    '♥': 'M0 7 C-17 -3 -6 -14 0 -5 C6 -14 17 -3 0 7Z',
-    '◆': 'M0 -8 7 0 0 8 -7 0Z',
-    'butterfly': 'M0 -1 C-15 -18 -14 5 -3 2 C-13 11 -1 13 0 3 C1 13 13 11 3 2 C14 5 15 -18 0 -1Z',
-  };
-  const shape = new Path2D(shapes[item.symbol]);
+  const shape = new Path2D(decorations[item.symbol]);
   context.fill(shape);
   context.stroke(shape);
-  if (item.symbol === 'butterfly') {
-    context.strokeStyle = '#7755a2';
-    context.beginPath();
-    context.moveTo(0, -6);
-    context.lineTo(0, 6);
-    context.stroke();
+  const detail = decorationDetails[item.symbol];
+  if (detail) {
+    context.strokeStyle = '#62417a99';
+    context.stroke(new Path2D(detail));
   }
   context.restore();
 }

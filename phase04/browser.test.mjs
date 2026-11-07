@@ -440,13 +440,17 @@ for (const [width, height, touch] of devices) {
             assert.ok(cheekPercent > 0 && cheekPercent < 100, `one cheek must progress without completing: ${cheekPercent}%`);
             await shot('08-crema-una-guancia-' + id);
             const last = [278, profile.forehead[1]];
-            await stroke([[218, profile.forehead[1]], last], baseline ? undefined :
-              () => checkCursor(id, selected, last, true));
+            let fresh;
+            await stroke([[218, profile.forehead[1]], last], async () => {
+              // Read the transient cream before screenshots and other assertions
+              // can consume the animation window on a busy browser.
+              [fresh] = await pixels([profile.forehead]);
+              if (!baseline) await checkCursor(id, selected, last, true);
+            });
             await waitForFrame();
             const creamPercent = await percent();
             assert.ok(creamPercent > 0 && creamPercent < 100, `cream after cheek and forehead: ${creamPercent}%`);
             assert.notEqual(await canvasPNG('#mask'), initial, 'cream leaves a visible trace');
-            const [fresh] = await pixels([profile.forehead]);
             if (index === 0) await shot('08-crema-in-assorbimento');
             await page.waitForTimeout(1550);
             const [absorbed] = await pixels([profile.forehead]);

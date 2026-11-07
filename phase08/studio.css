@@ -40,3 +40,9 @@
   .studio-spark { display: none; }
 }
 #makeupStudio [hidden], .studio-tool[hidden] { display: none; }
+
+#studioPalette svg { width: 85%; height: 85%; }
+#studioFinishes { display: flex; justify-content: center; gap: 5px; margin-top: 6px; }
+#studioFinishes button, #studioHearts { min-height: 38px; padding: 3px 9px; border: 2px solid #d9c4e6; border-radius: 14px; background: #fff; color: #623564; font-size: .8rem; }
+#studioHearts { margin-top: 5px; }
+#studioFinishes button[aria-pressed="true"], #studioHearts[aria-pressed="true"] { border-color: #723298; background: #f3e1ff; }

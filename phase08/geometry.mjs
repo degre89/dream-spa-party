@@ -44,6 +44,7 @@ export const palettes = {
   shadow: { label: 'Ombretto', hint: 'Sfuma sopra le ciglia con il pennellino.', radius: 16, colors: [
     ['Rosa confetto', '#f779bf'], ['Lilla', '#b685f6'], ['Azzurro cielo', '#4faeff'],
     ['Turchese', '#20cabd'], ['Viola', '#8e47d9'], ['Oro perlato', '#f1be64'],
+    ['Verde menta', '#7be5a5'], ['Pesca perlato', '#ff9d83'], ['Argento lunare', '#abbce8'],
   ] },
   blush: { label: 'Blush', hint: 'Fai piccoli cerchi sulle guance.', radius: 24, colors: [
     ['Rosa', '#f75c9e'], ['Pesca', '#ff985f'], ['Lilla', '#b478e9'], ['Corallo', '#f65a70'],
@@ -55,5 +56,7 @@ export const palettes = {
   jewels: { label: 'Decori', hint: 'Prova il decoro sul viso e solleva il dito per fissarlo. Tocca un decoro già presente per toglierlo.', colors: [
     ['Stellina', '#ffe18a', '★'], ['Cuoricino', '#ff82be', '♥'],
     ['Farfallina', '#c0a8ff', 'butterfly'], ['Brillantino', '#a7f2ff', '◆'],
+    ['Luna', '#ffdf91', 'moon'], ['Fiorellino', '#ffa9d8', 'flower'],
+    ['Gemma', '#a98df3', 'gem'], ['Petalo', '#92e8bd', 'petal'],
   ] },
 };

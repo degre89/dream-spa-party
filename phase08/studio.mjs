@@ -1,7 +1,9 @@
 import { clients } from '../phase03/clients.mjs?v=07a';
 import { drawExpression } from '../phase04/expressions.mjs?v=08a';
-import { faces, palettes } from './geometry.mjs?v=08b1';
-import { createLook, allowed, createPaintView } from './paint.mjs?v=08b1';
+import { faces, palettes } from './geometry.mjs?v=08b2';
+import { createLook, allowed, createPaintView } from './paint.mjs?v=08b2';
+
+import { decorations, decorationDetails, finishes } from './fantasy.mjs?v=08b2';
 
 export function mountMakeup({ onHome, bindAction }) {
   const get = id => document.getElementById('studio' + id);
@@ -21,6 +23,7 @@ export function mountMakeup({ onHome, bindAction }) {
   const images = new Map();
   let client, look, image, lids;
   let category = 'shadow', choice = 0;
+  let finish = 'Soft', hearts = false;
   let active = null, stroke = null, previous = null, preview = null;
   let closed = false, result = false, blinkTimer, openTimer, effect;
   let loadVersion = 0, pendingConfirmation, shineFrame;
@@ -112,7 +115,12 @@ export function mountMakeup({ onHome, bindAction }) {
       button.setAttribute('aria-pressed', index === choice);
       const swatch = document.createElement('span');
       swatch.style.background = color ?? 'linear-gradient(135deg, #fff, #edd8ff, #fff)';
-      swatch.textContent = symbol === 'butterfly' ? 'ʚɞ' : symbol ?? (color ? '' : '✧');
+      if (symbol) {
+        swatch.innerHTML = '<svg viewBox="-12 -12 24 24" aria-hidden="true"><path fill="' + color +
+          '" stroke="#fff5db" d="' + decorations[symbol] + '"/><path fill="none" stroke="#62417a99" d="' +
+          (decorationDetails[symbol] ?? '') + '"/></svg>';
+        swatch.style.background = '#8a62a7';
+      } else if (!color) swatch.textContent = '✧';
       button.append(swatch);
       bindAction(button, () => {
         stopGesture();
@@ -123,14 +131,43 @@ export function mountMakeup({ onHome, bindAction }) {
       get('Palette').append(button);
     });
     get('Hint').textContent = entry.hint;
+    updateFinishes();
     announceChoice();
     get('Clear').textContent = 'Pulisci ' + entry.label.toLowerCase();
     cursor.firstElementChild.setAttribute('href', 'phase08/tools.svg#' + category);
   }
 
-  function announceChoice() {
-    get('Choice').textContent = selected()[0] + (category === 'jewels' ? ' · ' + (look?.decorations.length ?? 0) + '/6' : '');
+  function updateFinishes() {
+    get('Finishes').hidden = category === 'jewels' || selected()[1] === null;
+    for (const button of get('Finishes').children) button.setAttribute('aria-pressed', button.textContent === finish);
+    get('Hearts').hidden = category !== 'blush';
+    get('Hearts').setAttribute('aria-pressed', hearts);
   }
+
+  function announceChoice() {
+    const detail = category === 'jewels' ? (look?.decorations.length ?? 0) + '/6' :
+      selected()[1] === null ? '' : finish + (category === 'blush' && hearts ? ' + microcuoricini' : '');
+    get('Choice').textContent = [selected()[0], detail].filter(Boolean).join(' · ');
+  }
+
+  for (const name of finishes) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = name;
+    bindAction(button, () => {
+      stopGesture();
+      finish = name;
+      updateFinishes();
+      announceChoice();
+    });
+    get('Finishes').append(button);
+  }
+  bindAction(get('Hearts'), () => {
+    stopGesture();
+    hearts = !hearts;
+    updateFinishes();
+    announceChoice();
+  });
 
   for (const [id, entry] of Object.entries(palettes)) {
     const button = document.createElement('button');
@@ -237,7 +274,7 @@ export function mountMakeup({ onHome, bindAction }) {
     if (!valid.length) return;
     if (!stroke) {
       checkpoint();
-      stroke = { category, color: selected()[1], points: [] };
+      stroke = { category, color: selected()[1], finish, hearts: category === 'blush' && hearts, points: [] };
       look.strokes.push(stroke);
     }
     const closeForBrush = category === 'shadow' && !closed;
@@ -251,7 +288,6 @@ export function mountMakeup({ onHome, bindAction }) {
       paint.draw(look, null, shinePulse);
     }
     get('Undo').disabled = false;
-    if (stroke.category !== 'lips' || stroke.color !== null) shimmer(valid.at(-1));
   }
   function interpolate(from, to) {
     const distance = Math.hypot(to[0] - from[0], to[1] - from[1]);
