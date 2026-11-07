@@ -39,7 +39,7 @@ function warp(source, target, feature, marginX, marginY, offset) {
   }
 }
 
-function drawExpression(context, original, id, happy) {
+export function drawExpression(context, original, id, happy) {
   const result = context.createImageData(width, height);
   result.data.set(original.data);
   const { mouth, eyes, brows } = clients[id].landmarks;

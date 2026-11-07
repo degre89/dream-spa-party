@@ -1,4 +1,5 @@
-import { mountHub } from './phase07/hub.mjs?v=07br';
+import { mountMakeup } from './phase08/studio.mjs?v=08a';
+import { mountHub } from './phase07/hub.mjs?v=08a';
 import { createWallet, SAVE_KEY } from './phase06/wallet.mjs?v=07b';
 import { mountShop } from './phase06/shop.mjs?v=07b';
 import { products } from './phase06/products.mjs?v=06b';
@@ -655,7 +656,11 @@ function syncWallet() {
   hub.refresh();
 }
 
-const hub = mountHub({ wallet, onSkinCare: () => show('choose'), changed: syncWallet, bindAction });
+const makeup = mountMakeup({ bindAction,
+  onHome: () => { show('home'); $('#makeup').focus(); }
+});
+const hub = mountHub({ wallet, onSkinCare: () => show('choose'),
+  onMakeup: () => { show('makeupStudio'); makeup.open(); }, changed: syncWallet, bindAction });
 const shop = mountShop({ wallet, clients, products, productGraphic, changed: syncWallet, bindAction });
 let shopReturn;
 for (const [selector, screen] of [['#openShop', 'home'], ['#chooseShop', 'choose']]) {

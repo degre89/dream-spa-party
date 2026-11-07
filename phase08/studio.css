@@ -1,0 +1,42 @@
+#makeupStudio { height: auto; min-height: 100dvh; background: radial-gradient(ellipse at 50% 25%, #f6d6f7, #cba5ed 50%, #955cae); gap: 8px; overflow-x: clip; }
+#studioTitle { font-size: clamp(1.5rem, 6vw, 2.1rem); }
+#studioSelection { text-align: center; max-width: 420px; padding: 12px 0; }
+#studioSelection p { background: #fff2fa; border-radius: 20px; padding: 14px; line-height: 1.5; }
+.studio-emblem { width: 112px; height: 100px; object-fit: contain; filter: drop-shadow(0 8px 12px #8851aa66); }
+#studioCards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+#studioCards button { border: 3px solid #ffedb7; border-radius: 28px; color: #5a275d; background: linear-gradient(#fff1fc, #d8ecff); overflow: hidden; min-width: 0; box-shadow: 0 7px 0 #8e63ba; }
+#studioCards img { width: 100%; max-height: 235px; object-fit: contain; display: block; }
+#studioCards strong, #studioCards small { display: block; margin: 5px; }
+#studioEditor { width: 100%; max-width: 480px; }
+.studio-mirror { margin: 5px auto 12px; width: min(100%, 344px); border: 7px solid #f8dfa8; border-radius: 45% 45% 35% 35% / 28% 28% 16% 16%; box-shadow: inset 0 0 0 4px #fffbef, 0 5px 0 #b18467, 0 12px 25px #794b9c55; background: radial-gradient(ellipse at 35% 22%, #fff8fd, #e8deff 55%, #b3e8ed); position: relative; overflow: hidden; }
+.studio-mirror::before { content: '✦'; color: #fffce8; position: absolute; top: 14%; left: 5%; font-size: 28px; z-index: 1; pointer-events: none; }
+.studio-face { position: relative; width: 100%; aspect-ratio: 4 / 5; }
+#studioPortrait, #studioPaint { position: absolute; width: 100%; height: 100%; inset: 0; }
+#studioPortrait { pointer-events: none; }
+#studioPaint { touch-action: none; cursor: crosshair; }
+.studio-controls { background: linear-gradient(#fff6fc, #f4e7ff); border: 2px solid white; border-radius: 25px; padding: 10px; box-shadow: 0 5px 0 #b386ca; text-align: center; }
+#studioCategories { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+#studioCategories button { min-height: 61px; padding: 4px 1px; border-radius: 14px; border: 2px solid #d9c4e6; background: #fff; color: #623564; font-size: .8rem; }
+#studioCategories svg { display: block; width: 30px; height: 30px; margin: auto; }
+#studioCategories button[aria-pressed="true"], #studioPalette button[aria-pressed="true"] { border-color: #723298; box-shadow: 0 0 0 2px #e7ccff; background-color: #f3e1ff; }
+#studioHint { font-size: .82rem; line-height: 1.35; margin: 8px 0; }
+#studioPalette { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+#studioPalette button { width: 44px; height: 44px; padding: 3px; border: 2px solid #d7c5e3; border-radius: 50%; background: #fff; }
+#studioPalette span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; box-shadow: inset 0 2px 5px #fff9, inset 0 -2px 4px #57226544; font-size: 22px; }
+#studioChoice { font-size: .8rem; margin: 5px 0 7px; min-height: 1em; }
+.studio-edits { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; }
+.studio-edits button { font-size: .75rem; padding: 5px 8px; }
+#studioFinish { margin-top: 8px; width: 100%; min-height: 44px; padding: 8px; }
+.studio-tool { position: absolute; width: 65px; height: 65px; transform: translate(-5px, -60px); overflow: visible; pointer-events: none; z-index: 3; filter: drop-shadow(0 3px 2px #54235066); }
+.studio-spark { position: absolute; color: #fff3b4; pointer-events: none; opacity: 0; font-size: 19px; transform: translate(-50%, -50%); }
+#studioResult h3 { font-size: 1.4rem; color: #79348d; margin: 6px; }
+#studioResult p { font-size: .88rem; }
+#studioConfirm { max-width: min(420px, 95vw); }
+#studioConfirm h2 { font-size: 1.6rem; }
+@media (max-height: 650px) {
+  .studio-mirror { width: min(85%, 260px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-spark { display: none; }
+}
+#makeupStudio [hidden], .studio-tool[hidden] { display: none; }

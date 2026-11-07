@@ -11,7 +11,7 @@ const objectViews = {
 };
 const svgNS = 'http://www.w3.org/2000/svg';
 
-export function mountHub({ wallet, onSkinCare, changed, bindAction }) {
+export function mountHub({ wallet, onSkinCare, onMakeup, changed, bindAction }) {
   const room = document.querySelector('#home');
   const get = id => room.querySelector('#' + id);
   const panel = get('decorPanel');
@@ -155,6 +155,6 @@ export function mountHub({ wallet, onSkinCare, changed, bindAction }) {
   });
   confirm.addEventListener('click', () => void equip(true));
   bindAction(get('play'), onSkinCare);
-  get('makeup').addEventListener('click', () => get('makeupInfo').showModal());
+  bindAction(get('makeup'), onMakeup);
   return { refresh };
 }

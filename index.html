@@ -7,7 +7,8 @@
   <title>Dream Spa Party</title>
   <link rel="stylesheet" href="spa.css?v=06c">
   <link rel="stylesheet" href="phase07/hub.css?v=07br">
-  <script type="module" src="spa.js?v=07br"></script>
+  <link rel="stylesheet" href="phase08/studio.css?v=08a">
+  <script type="module" src="spa.js?v=08a"></script>
 </head>
 <body>
 <main class="app">
@@ -42,7 +43,7 @@
     <div id="hubMenu" class="hub-menu">
       <nav class="hub-activities" aria-label="Attività">
         <button class="hub-card" id="play" data-activity="skin-care" disabled><img src="assets/jar-strawberry.svg" alt=""><strong>Skin Care Spa</strong><small>Scegli una cliente</small></button>
-        <button class="hub-card" id="makeup" data-activity="makeup" aria-haspopup="dialog"><img src="assets/makeup-emblem.svg?v=07br" alt=""><strong>Makeup Studio</strong><small>Prossimamente</small></button>
+        <button class="hub-card" id="makeup" data-activity="makeup"><img src="assets/makeup-emblem.svg?v=07br" alt=""><strong>Makeup Studio</strong><small>Crea un look magico</small></button>
       </nav>
       <div class="hub-actions"><button class="cta" id="openDecor" aria-controls="decorPanel" aria-expanded="false">✧ Decora la mia Spa</button><button class="pill" id="openShop">✦ Negozio</button></div>
       <p id="status" role="status"></p>
@@ -53,16 +54,60 @@
       <div id="decorVariants" role="group" aria-label="Varianti della decorazione"></div>
       <div class="decor-actions"><p id="decorStatus" role="status"></p><button class="cta" id="applyDecor"></button></div>
     </section>
-    <dialog class="room-dialog" id="makeupInfo" aria-labelledby="makeupTitle">
-      <img src="assets/makeup-emblem.svg?v=07br" alt="">
-      <h2 id="makeupTitle">Makeup Studio</h2>
-      <p>Prossimamente! Qui potrai creare look da favola per le tue clienti.</p>
-      <form method="dialog"><button class="cta">Torna alla spa</button></form>
-    </dialog>
     <dialog class="room-dialog" id="decorConfirm" aria-labelledby="decorConfirmTitle" aria-describedby="decorConfirmText">
       <h2 id="decorConfirmTitle">Sblocca decorazione</h2>
       <p id="decorConfirmText"></p>
       <div class="hub-actions"><form method="dialog"><button class="pill" autofocus>Annulla</button></form><button class="cta" id="confirmDecor">Compra</button></div>
+    </dialog>
+  </section>
+  <section class="screen" id="makeupStudio" aria-labelledby="studioTitle">
+    <header class="top studio-top">
+      <button class="pill" id="studioHome">⌂ La mia Spa</button>
+      <button class="pill" id="studioClients" hidden>Clienti</button>
+    </header>
+    <h2 id="studioTitle" tabindex="-1">Magic Makeup Studio</h2>
+    <div id="studioSelection">
+      <img class="studio-emblem" src="assets/makeup-emblem.svg?v=07br" alt="">
+      <h3>Scegli una cliente</h3>
+      <div id="studioCards"></div>
+      <p>Le altre otto clienti arriveranno in una prossima fase. Le trovi già nella Skin Care Spa.</p>
+    </div>
+    <div id="studioEditor" hidden>
+      <div class="studio-mirror">
+        <div class="studio-face">
+          <canvas id="studioPortrait" width="768" height="960" aria-label="Ritratto della cliente"></canvas>
+          <canvas id="studioPaint" width="512" height="640" aria-label="Applica il trucco sul viso"></canvas>
+          <svg class="studio-tool" viewBox="0 0 48 48" aria-hidden="true" hidden><use/></svg>
+          <span class="studio-spark" aria-hidden="true">✦</span>
+        </div>
+      </div>
+      <div class="studio-controls">
+        <div id="studioResult" hidden>
+          <h3 tabindex="-1">Il tuo look è pronto! ✦</h3>
+          <p>Un look da favola, creato da te.</p>
+          <button class="pill" id="studioResume">Ritocca il look</button>
+        </div>
+        <div id="studioTools">
+          <div id="studioCategories" role="group" aria-label="Strumenti"></div>
+          <p id="studioHint"></p>
+          <div id="studioPalette" role="group" aria-label="Tavolozza"></div>
+          <p id="studioChoice" role="status"></p>
+          <div class="studio-edits">
+            <button class="pill" id="studioUndo">Annulla gesto</button>
+            <button class="pill" id="studioClear">Pulisci</button>
+            <button class="pill" id="studioReset">Azzera look</button>
+          </div>
+          <button class="cta" id="studioFinish">✧ Look finito</button>
+        </div>
+      </div>
+    </div>
+    <dialog class="room-dialog" id="studioConfirm" aria-labelledby="studioConfirmTitle">
+      <h2 id="studioConfirmTitle"></h2>
+      <p id="studioConfirmText"></p>
+      <div class="hub-actions">
+        <form method="dialog"><button class="pill" autofocus>Annulla</button></form>
+        <button class="cta" id="studioConfirmAction">Continua</button>
+      </div>
     </dialog>
   </section>
   <section class="screen" id="choose">

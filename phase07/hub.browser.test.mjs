@@ -56,10 +56,10 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       assert.equal(await el('.mirror-shine').evaluate(node => getComputedStyle(node).animationName), 'none');
       assert.equal(await el('.room-shine').evaluate(node => getComputedStyle(node).animationName), 'none');
       await tap('#makeup');
-      await el('#makeupInfo[open]').waitFor();
-      assert.match(await el('#makeupInfo').innerText(), /Prossimamente/);
+      await el('#makeupStudio.on').waitFor();
+      assert.equal(await el('#studioCards button').count(), 2);
       await shot('02-makeup-studio');
-      await tap('#makeupInfo button');
+      await tap('#studioHome');
       await tap('#play');
       await page.waitForFunction(() => document.querySelectorAll('.client:enabled').length === 10);
       await tap('#chooseHome');

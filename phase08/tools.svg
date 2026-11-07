@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <linearGradient id="handle" x2="1" y2="1"><stop stop-color="#ffc3f1"/><stop offset=".48" stop-color="#a876e5"/><stop offset="1" stop-color="#65409c"/></linearGradient>
+    <linearGradient id="gold" x2="1" y2="1"><stop stop-color="#fff7c1"/><stop offset=".58" stop-color="#eeb45d"/><stop offset="1" stop-color="#a65e48"/></linearGradient>
+    <radialGradient id="fluff"><stop stop-color="#ffebfb"/><stop offset=".72" stop-color="#f69bd7"/><stop offset="1" stop-color="#9b58b6"/></radialGradient>
+  </defs>
+  <symbol id="shadow" viewBox="0 0 48 48">
+    <path d="M18 29 38 4Q43 0 45 6L24 35Z" fill="url(#handle)"/>
+    <path d="m13 35 7-10 8 6-8 9Z" fill="url(#gold)"/>
+    <path d="M19 39Q16 46 4 47q-2-11 9-14Z" fill="url(#fluff)"/>
+  </symbol>
+  <symbol id="blush" viewBox="0 0 48 48">
+    <path d="M16 33 39 5q6-4 7 2L24 38Z" fill="url(#handle)"/>
+    <path d="m12 32 7-9 11 9-8 9Z" fill="url(#gold)"/>
+    <path d="M23 39Q18 51 5 46Q-4 34 10 29q10 1 13 10Z" fill="url(#fluff)"/>
+  </symbol>
+  <symbol id="lips" viewBox="0 0 48 48">
+    <path d="M19 30 37 5q8-4 9 5L27 37Z" fill="url(#handle)"/>
+    <path d="m22 29 7 6-13 10-3-3Z" fill="url(#gold)"/>
+    <path d="M17 43q-2 5-13 4q1-7 9-10Z" fill="#f965a2"/>
+    <path d="m7 44 5-3" stroke="#fff1f9" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="jewels" viewBox="0 0 48 48">
+    <path d="M9 41 41 4q5-1 4 4L13 44Z" fill="url(#handle)"/>
+    <path d="m9 30 2 7 7 2-7 2-2 7-2-7-7-2 7-2Z" fill="url(#gold)"/>
+    <circle cx="28" cy="9" r="2" fill="#ffe4a5"/>
+  </symbol>
+</svg>
