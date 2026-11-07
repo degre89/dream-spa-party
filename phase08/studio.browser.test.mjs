@@ -80,7 +80,6 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
     }
     const sweep = (x, y, length = 26) => Array.from({ length: 9 }, (_, i) => [x - length / 2 + length * i / 8, y]);
     let category, shade;
-    const product = { shadow: 'Ombretto', blush: 'Blush', lips: 'Rossetto', jewels: 'Decorazione' };
     const expanded = () => el('#studioCart').getAttribute('aria-expanded');
     const activeChoice = () => el('#studioChoice').innerText();
     const chooseProduct = name => tap('#studioProducts button:text-is("' + name + '")');
@@ -93,10 +92,15 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
     }
     async function ensureProduct() {
       await open(category);
-      if (!await el('#studioProducts [aria-pressed=true]').count()) await chooseProduct(product[category]);
+      if (category === 'lips' && !await el('#studioProducts button:text-is("Rossetto")[aria-pressed=true]').count()) {
+        await chooseProduct('Rossetto');
+      }
     }
     async function finish(name) {
-      if (await expanded() === 'false' || await el('#studioFinishes').isHidden()) await color(shade);
+      if (await expanded() === 'false' ||
+          await el('#studioPalette [aria-pressed=true]').evaluateAll(buttons => buttons[0]?.ariaLabel) !== shade) {
+        await color(shade);
+      }
       assert.equal(await expanded(), 'true', 'color browsing keeps the tray open');
       await tap('#studioFinishes button:text-is("' + name + '")');
       assert.equal(await expanded(), 'false', 'a finish activates the tool and closes the tray');

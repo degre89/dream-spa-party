@@ -137,7 +137,6 @@ export function mountMakeup({ onHome, bindAction }) {
     controls();
     if (returnFocus) {
       get('Cart').focus({ preventScroll: true });
-      window.scrollTo(0, 0);
     }
   }
 
@@ -151,6 +150,7 @@ export function mountMakeup({ onHome, bindAction }) {
 
   function controls() {
     tray.hidden = !draft;
+    get('Actions').hidden = Boolean(draft);
     get('Cart').setAttribute('aria-expanded', Boolean(draft));
     get('Palette').replaceChildren();
     get('Products').replaceChildren();
@@ -163,7 +163,8 @@ export function mountMakeup({ onHome, bindAction }) {
     if (!draft) return;
 
     const entry = palettes[draft.category];
-    const products = draft.category === 'lips' ? ['lips', 'gloss'] : [draft.category];
+    const products = draft.category === 'lips' ? ['lips', 'gloss'] : [];
+    get('Products').hidden = !products.length;
     for (const product of products) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -173,16 +174,18 @@ export function mountMakeup({ onHome, bindAction }) {
       bindAction(button, () => {
         if (product === 'gloss') return commitChoice(glossIndex);
         draft.product = product;
-        draft.choice = null;
+        draft.choice = category === 'lips' && choice !== glossIndex ? choice : null;
         controls();
         get('Palette').firstElementChild.focus({ preventScroll: true });
       });
       get('Products').append(button);
     }
-    get('Hint').textContent = !draft.product ? 'Scegli un prodotto.' :
-      draft.choice !== null ? 'Scegli la finitura.' :
-      draft.category === 'jewels' ? 'Scegli il tuo decoro.' : 'Scegli un colore.';
-    if (draft.product) entry.colors.forEach(([name, color, symbol], index) => {
+    const showingColors = draft.product !== 'gloss';
+    get('Palette').hidden = !showingColors;
+    get('Hint').hidden = !showingColors;
+    get('Hint').textContent = draft.choice !== null ? entry.colors[draft.choice][0] :
+      draft.category === 'jewels' ? 'Scegli il tuo decoro' : 'Scegli un colore';
+    if (showingColors) entry.colors.forEach(([name, color, symbol], index) => {
       if (color === null) return;
       const button = document.createElement('button');
       button.type = 'button';
@@ -206,7 +209,11 @@ export function mountMakeup({ onHome, bindAction }) {
       });
       get('Palette').append(button);
     });
-    get('Finishes').hidden = draft.choice === null;
+    get('Finishes').hidden = !showingColors || draft.category === 'jewels';
+    for (const button of get('Finishes').children) {
+      button.disabled = draft.choice === null;
+      button.setAttribute('aria-pressed', draft.category === category && draft.choice === choice && button.textContent === finish);
+    }
     get('Hearts').hidden = draft.category !== 'blush' || !draft.product;
     get('Hearts').setAttribute('aria-pressed', draft.hearts);
   }
@@ -232,11 +239,15 @@ export function mountMakeup({ onHome, bindAction }) {
 
   function openCategory(id) {
     stopGesture();
-    setTray(draft?.category === id ? null : { category: id, product: null, choice: null, hearts: id === category && hearts });
+    if (draft?.category === id) return;
+    const active = id === category;
+    const product = active && id === 'lips' && choice === glossIndex ? 'gloss' : id;
+    setTray({ category: id, product, choice: active ? choice : null, hearts: active && hearts });
+    tray.scrollTop = 0;
   }
 
-  bindAction(get('Cart'), () => openCategory(draft?.category ?? category));
-  tray.addEventListener('keydown', event => {
+  bindAction(get('Cart'), () => draft ? setTray(null, true) : openCategory(category));
+  get('Drawer').addEventListener('keydown', event => {
     if (event.key === 'Escape') setTray(null, true);
   });
   for (const [id, label] of Object.entries(categories)) {
@@ -244,7 +255,8 @@ export function mountMakeup({ onHome, bindAction }) {
     button.type = 'button';
     button.dataset.category = id;
     button.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true"><use href="phase08/tools.svg#' + id + '"/></svg>';
-    button.append(label);
+    button.setAttribute('aria-label', label);
+    button.append(id === 'jewels' ? 'Decori' : label);
     bindAction(button, () => openCategory(id));
     get('Categories').append(button);
   }

@@ -86,7 +86,6 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       for (const [id, zones] of clients) {
         await tap(`#studioCards [data-client="${id}"]`);
         await tap('#studioCategories [data-category="jewels"]');
-        await tap('#studioProducts button:text-is("Decorazione")');
         await tap('#studioPalette [aria-label="Luna"]');
         await surface.scrollIntoViewIfNeeded();
         const box = await surface.boundingBox();
