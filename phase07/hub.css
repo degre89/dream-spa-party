@@ -1,0 +1,58 @@
+#home {
+  height: auto;
+  min-height: 100dvh;
+  gap: 9px;
+  color: #592854;
+  background: radial-gradient(ellipse at 45% 15%, #fff4fa, transparent 55%), linear-gradient(150deg, #e5d2ff, #ffd9ec 58%, #cfefee);
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+#home [hidden] { display: none; }
+#roomTitle { color: #702762; text-shadow: 0 2px #fff; font-size: clamp(2.2rem, 10vw, 3.7rem); line-height: 1; margin: 4px 0 0; }
+.room-intro { margin: 0; font-size: .86rem; }
+#roomScene { display: block; flex: none; width: 100%; height: auto; border: 3px solid #fff7fd; border-radius: 22px; box-shadow: 0 6px 15px #6d3e6e31; }
+.room-shine { animation: room-twinkle 3.2s ease-in-out infinite alternate; }
+@keyframes room-twinkle { from { opacity: .25; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .room-shine { animation: none; } }
+.hub-menu, #decorPanel { width: 100%; }
+.hub-activities, #decorVariants { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.hub-card {
+  display: grid; justify-items: center; align-content: center; gap: 3px;
+  min-height: 98px; padding: 5px 3px; border-radius: 18px; border: 2px solid #fff;
+  background: linear-gradient(#fff6fa, #f8c6e1); box-shadow: 0 4px 0 #b6659c56; color: #692353;
+  font-size: clamp(.82rem, 3.75vw, 1.03rem);
+}
+.hub-card[data-activity="makeup"] { color: #572e80; background: linear-gradient(#f8f0ff, #dec4fa); }
+.hub-card img { width: 39px; height: 39px; }
+.hub-card small { font-size: .72rem; }
+.hub-actions, .decor-actions { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.hub-actions .cta, .decor-actions .cta { min-width: 0; padding-inline: 10px; }
+#home :is(.hub-card, #decorCategories button, #decorVariants button):focus-visible { outline-color: #72266a; }
+#status:empty { display: none; }
+#decorPanel { padding: 8px; border-radius: 19px; border: 2px solid white; background: #fff4fb; box-shadow: 0 4px 14px #8e518222; }
+#decorTitle { color: #702762; text-shadow: none; font-size: clamp(1.05rem, 5vw, 1.4rem); text-align: left; }
+#closeDecor { box-shadow: none; }
+#decorCategories { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin: 6px 0; }
+#decorCategories button, #decorVariants button {
+  min-height: 44px; min-width: 0; color: #642656; background: #f8e0f1; border: 2px solid transparent;
+  border-radius: 12px; padding: 3px 2px; font-size: .76rem;
+}
+#decorCategories span { margin-right: .25em; }
+#decorVariants button { display: grid; justify-items: center; align-content: center; gap: 2px; background: #eee3ff; }
+#decorVariants small { font-size: .72rem; }
+#decorPanel [aria-pressed="true"] { background: white; border-color: #984083; }
+.decor-actions { justify-content: space-between; flex-wrap: nowrap; margin-top: 5px; min-height: 44px; }
+#decorStatus { flex: 1; margin: 0; font-size: .76rem; }
+.room-dialog { width: min(calc(100% - 28px), 340px); border: 3px solid #fff; border-radius: 22px; background: #fff1fa; color: #642656; text-align: center; box-shadow: 0 10px 42px #45204c72; }
+.room-dialog::backdrop { background: #4220429c; }
+.room-dialog h2 { color: #702762; text-shadow: none; font-size: 1.5rem; }
+.room-dialog img { width: 75px; }
+@media (max-width: 350px) {
+  #home { padding-inline: 10px; gap: 6px; }
+  #decorPanel { padding: 5px; }
+}
+#home button { -webkit-tap-highlight-color: transparent; }
+@media (max-height: 620px) and (max-width: 380px) {
+  #home:has(#decorPanel:not([hidden])) { gap: 5px; }
+  #home:has(#decorPanel:not([hidden])) .room-intro { display: none; }
+  #home:has(#decorPanel:not([hidden])) #roomScene { max-width: 273px; }
+}

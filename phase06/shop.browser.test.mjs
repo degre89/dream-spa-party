@@ -54,7 +54,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       await Promise.all([page.reload(), secondMigration.goto(baseURL)]);
       await secondMigration.close();
       await el('#stars').filter({ hasText: /^165$/ }).waitFor();
-      assert.equal((await saved()).version, 2);
+      assert.equal((await saved()).version, 3);
       assert.equal((await saved()).earned, 200);
       assert.deepEqual((await saved()).clients, ['martina']);
       assert.equal((await saved()).choices.steamer, 'steamer-stars');

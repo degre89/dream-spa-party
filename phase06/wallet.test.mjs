@@ -21,7 +21,7 @@ test('verified ownership and spending trigger a one-time refund without changing
   storageWith(purchase);
   const wallets = [createWallet(), createWallet()];
   assert.deepEqual(await Promise.all(wallets.map(wallet => wallet.initialize())), ['ok', 'ok']);
-  assert.deepEqual(createWallet().state, { ...purchase, version: 2, balance: 167 });
+  assert.deepEqual(createWallet().state, { ...purchase, version: 3, balance: 167, decorations: [], room: {} });
   assert.equal(localStorage.getItem('dsp-stars'), '167');
   assert.equal(await wallets[0].buy({ id: 'martina' }), 'unavailable');
   assert.equal(await wallets[0].buy({ id: 'steamer-cloud' }), 'owned');

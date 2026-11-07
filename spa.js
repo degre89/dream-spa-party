@@ -1,4 +1,5 @@
-import { createWallet, SAVE_KEY } from './phase06/wallet.mjs?v=07a';
+import { mountHub } from './phase07/hub.mjs?v=07b';
+import { createWallet, SAVE_KEY } from './phase06/wallet.mjs?v=07b';
 import { mountShop } from './phase06/shop.mjs?v=07a';
 import { products } from './phase06/products.mjs?v=06b';
 import { endStroke, MASK_TOOLS, SPA_TOOLS } from './phase03/facial-state.mjs?v=04e';
@@ -54,7 +55,7 @@ const tools = {
 };
 
 let client, skin, journey, selected;
-let portrait = $('#home .portrait');
+let portrait;
 let blinkTimer, openTimer, reactionTimer, transitionTimer, steamTimer, patchTimer;
 let feedback;
 let lastCue, bubbleTimer, mouthTimer;
@@ -549,13 +550,14 @@ for (const type of ['pointercancel', 'lostpointercapture']) {
   canvas.addEventListener(type, event => { if (event.pointerId === pointer) stopStroke(); });
 }
 
-for (const selector of ['#play', '#again']) bindAction($(selector), () => show('choose'));
+bindAction($('#again'), () => show('choose'));
 function goHome() {
   stopStroke();
   cancelAnimationFrame(frame);
   frame = 0;
   setCart(false);
   show('home');
+  $('#roomTitle').focus({ preventScroll: true });
 }
 for (const selector of ['#chooseHome', '#back', '#goHome']) bindAction($(selector), goHome);
 bindAction(productBack, () => closeProducts());
@@ -650,8 +652,10 @@ scheduleBlink();
 function syncWallet() {
   $('#stars').textContent = wallet.state.balance;
   $('#totalStars').textContent = '★ ' + wallet.state.balance;
+  hub.refresh();
 }
 
+const hub = mountHub({ wallet, onSkinCare: () => show('choose'), changed: syncWallet, bindAction });
 const shop = mountShop({ wallet, clients, products, productGraphic, changed: syncWallet });
 let shopReturn;
 for (const [selector, screen] of [['#openShop', 'home'], ['#chooseShop', 'choose']]) {

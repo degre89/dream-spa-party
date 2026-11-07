@@ -6,19 +6,57 @@
   <meta name="theme-color" content="#592754">
   <title>Dream Spa Party</title>
   <link rel="stylesheet" href="spa.css?v=06c">
-  <script type="module" src="spa.js?v=07a"></script>
+  <link rel="stylesheet" href="phase07/hub.css?v=07b">
+  <script type="module" src="spa.js?v=07b"></script>
 </head>
 <body>
 <main class="app">
   <section class="screen on" id="home">
-    <header class="top"><span class="pill">✿ Dream Spa</span><span class="pill">★ <span id="stars">0</span></span></header>
-    <h1>Dream <span>Spa Party</span></h1>
-    <p class="tagline">Il tuo salone magico</p>
-    <div class="stage"><div class="portrait"><img class="hero" src="assets/girl.webp" alt="La protagonista con un fiocco rosa" draggable="false"><img class="expression eyelids" src="assets/eyelids.svg" alt="" draggable="false"><img class="expression grin" src="assets/smile.svg" alt="" draggable="false"></div></div>
-    <footer><div class="home-actions"><button class="cta" id="play" disabled>▶ Gioca</button><button class="pill" id="openShop">✦ Negozio</button></div><p id="status" role="status">La tua prima giornata alla Spa!</p></footer>
+    <header class="top"><span class="pill">✿ Dream Spa Party</span><span class="pill">★ <output id="stars" aria-label="Saldo stelline">0</output></span></header>
+    <h1 id="roomTitle" tabindex="-1">La mia Spa</h1>
+    <p class="room-intro">Un salone tutto tuo!</p>
+    <svg id="roomScene" viewBox="0 0 640 430" role="img" aria-label="Stanza spa personalizzabile">
+      <image href="assets/spa-room.svg" width="640" height="430"/>
+      <use data-decor="wall" href="assets/spa-decor.svg#wall-basic"/>
+      <use data-decor="mirror" href="assets/spa-decor.svg#mirror-basic"/>
+      <use data-decor="rug" href="assets/spa-decor.svg#rug-basic"/>
+      <use data-decor="lamp" href="assets/spa-decor.svg#lamp-basic"/>
+      <use data-decor="plant" href="assets/spa-decor.svg#plant-basic"/>
+      <use data-decor="chair" href="assets/spa-decor.svg#chair-basic"/>
+      <g class="room-shine" aria-hidden="true" fill="#fff8d8">
+        <path d="M220 108q2 9 10 10-8 1-10 10-2-9-10-10 8-1 10-10z"/>
+        <path d="M391 64q2 9 10 10-8 1-10 10-2-9-10-10 8-1 10-10z"/>
+        <path d="M534 219q2 9 10 10-8 1-10 10-2-9-10-10 8-1 10-10z"/>
+      </g>
+    </svg>
+    <div id="hubMenu" class="hub-menu">
+      <nav class="hub-activities" aria-label="Attività">
+        <button class="hub-card" id="play" data-activity="skin-care" disabled><img src="assets/jar-strawberry.svg" alt=""><strong>Skin Care Spa</strong><small>Scegli una cliente</small></button>
+        <button class="hub-card" id="makeup" data-activity="makeup" aria-haspopup="dialog"><img src="assets/makeup-emblem.svg" alt=""><strong>Makeup Studio</strong><small>Prossimamente</small></button>
+      </nav>
+      <div class="hub-actions"><button class="cta" id="openDecor" aria-controls="decorPanel" aria-expanded="false">✧ Decora la mia Spa</button><button class="pill" id="openShop">✦ Negozio</button></div>
+      <p id="status" role="status"></p>
+    </div>
+    <section id="decorPanel" aria-labelledby="decorTitle" hidden>
+      <div class="top"><h2 id="decorTitle">Decora la mia Spa</h2><button class="pill" id="closeDecor">Fatto</button></div>
+      <div id="decorCategories" role="group" aria-label="Categorie di decorazioni"></div>
+      <div id="decorVariants" role="group" aria-label="Varianti della decorazione"></div>
+      <div class="decor-actions"><p id="decorStatus" role="status"></p><button class="cta" id="applyDecor"></button></div>
+    </section>
+    <dialog class="room-dialog" id="makeupInfo" aria-labelledby="makeupTitle">
+      <img src="assets/makeup-emblem.svg" alt="">
+      <h2 id="makeupTitle">Makeup Studio</h2>
+      <p>Prossimamente! Qui potrai creare look da favola per le tue clienti.</p>
+      <form method="dialog"><button class="cta">Torna alla spa</button></form>
+    </dialog>
+    <dialog class="room-dialog" id="decorConfirm" aria-labelledby="decorConfirmTitle" aria-describedby="decorConfirmText">
+      <h2 id="decorConfirmTitle">Sblocca decorazione</h2>
+      <p id="decorConfirmText"></p>
+      <div class="hub-actions"><form method="dialog"><button class="pill" autofocus>Annulla</button></form><button class="cta" id="confirmDecor">Compra</button></div>
+    </dialog>
   </section>
   <section class="screen" id="choose">
-    <header class="top"><button class="pill" id="chooseHome">⌂ Home</button><button class="pill" id="chooseShop">✦ Negozio</button></header>
+    <header class="top"><button class="pill" id="chooseHome">⌂ La mia Spa</button><button class="pill" id="chooseShop">✦ Negozio</button></header>
     <h2>Scegli una cliente</h2>
     <p class="tagline">Chi coccoliamo oggi?</p>
     <div class="clients" role="group" aria-label="Clienti disponibili"></div>
@@ -57,7 +95,7 @@
     </dialog>
   </section>
   <section class="screen" id="spa">
-    <header class="top"><button class="pill" id="back">⌂ Home</button><span class="pill" id="step"></span></header>
+    <header class="top"><button class="pill" id="back">⌂ La mia Spa</button><span class="pill" id="step"></span></header>
     <h2 id="goal">Momento Spa</h2>
     <div class="dialogue">
       <p id="hint" role="status" aria-atomic="true"></p>
@@ -97,7 +135,7 @@
     </footer>
   </section>
   <section class="screen" id="done">
-    <header class="top"><button class="pill" id="goHome">⌂ Home</button><span class="pill" id="totalStars"></span></header>
+    <header class="top"><button class="pill" id="goHome">⌂ La mia Spa</button><span class="pill" id="totalStars"></span></header>
     <h2>Fantastico!</h2>
     <div class="stage">
       <div class="portrait"><img class="hero" alt="" draggable="false"><canvas class="reaction-face" width="768" height="960" aria-hidden="true" hidden></canvas><canvas id="comparison" width="512" height="640" aria-label="Pelle dopo il trattamento"></canvas></div>

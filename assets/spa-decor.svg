@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="rose" x2="0%" y2="100%"><stop stop-color="#fff0fb"/><stop offset=".48" stop-color="#f6a8d3"/><stop offset="1" stop-color="#c56fae"/></linearGradient>
+  <linearGradient id="lilac" x2="0%" y2="100%"><stop stop-color="#f7ecff"/><stop offset=".52" stop-color="#c7a5ef"/><stop offset="1" stop-color="#9169c6"/></linearGradient>
+  <linearGradient id="gold" x2="0%" y2="100%"><stop stop-color="#fff8c7"/><stop offset=".55" stop-color="#ffda82"/><stop offset="1" stop-color="#cb8a72"/></linearGradient>
+  <linearGradient id="glass" x2="72%" y2="100%"><stop stop-color="#e8f7ff"/><stop offset=".4" stop-color="#a7cbed"/><stop offset=".45" stop-color="#e0edff"/><stop offset="1" stop-color="#bda5e5"/></linearGradient>
+  <linearGradient id="green" x2="0%" y2="100%"><stop stop-color="#baf6d8"/><stop offset="1" stop-color="#489b91"/></linearGradient>
+  <radialGradient id="glow"><stop stop-color="#fff1b4" stop-opacity=".85"/><stop offset="1" stop-color="#fff1b4" stop-opacity="0"/></radialGradient>
+  <filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#62336a" flood-opacity=".28"/></filter>
+  <path id="heart" d="M0 4C-18-9-10-20 0-12 10-20 18-9 0 4Z"/>
+</defs>
+<g id="mirror-basic" filter="url(#shadow)">
+  <ellipse cx="317" cy="122" rx="62" ry="76" fill="url(#rose)"/>
+  <ellipse cx="317" cy="122" rx="52" ry="66" fill="url(#glass)" stroke="#fff4f9" stroke-width="4"/>
+  <g fill="#fff7fa"><circle cx="317" cy="49" r="5"/><circle cx="317" cy="195" r="5"/><circle cx="257" cy="122" r="5"/><circle cx="377" cy="122" r="5"/></g>
+</g>
+<g id="mirror-special" filter="url(#shadow)">
+  <path d="M354 50c-39 5-59 47-42 78 13 25 43 35 69 23-10 36-52 54-86 39-37-15-54-57-38-95 15-37 57-58 97-45z" fill="url(#glass)" stroke="url(#gold)" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M353 88q3 13 15 15-12 2-15 16-3-14-15-16 12-2 15-15z" fill="url(#gold)"/>
+</g>
+<g id="rug-basic"><ellipse cx="309" cy="360" rx="159" ry="43" fill="#744c8b" opacity=".23"/><ellipse cx="308" cy="355" rx="155" ry="41" fill="#9fe1d0"/><ellipse cx="308" cy="353" rx="138" ry="33" fill="#c8f3e4" stroke="#f2fff6" stroke-width="3" stroke-dasharray="4 6"/></g>
+<g id="rug-special">
+  <path d="M161 352q-24-25 59-27 20-27 89-17 69-10 89 17 83 2 58 27 24 22-59 28-23 25-88 13-65 12-88-13-83-6-60-28z" fill="url(#rose)" stroke="#fff0f7" stroke-width="4" filter="url(#shadow)"/>
+  <ellipse cx="309" cy="351" rx="86" ry="24" fill="#ffd1e5" stroke="#fff0f7" stroke-width="2" stroke-dasharray="4 5"/>
+</g>
+<g id="chair-basic" filter="url(#shadow)">
+  <ellipse cx="313" cy="330" rx="79" ry="17" fill="#694470" opacity=".21"/>
+  <path d="M264 305h14l-5 25h-12zm80 0h15l4 25h-13z" fill="url(#gold)"/>
+  <path d="M252 274l-4-42q0-23 22-28 12-28 43-23 29-5 45 23 23 7 21 30l-6 40z" fill="url(#rose)" stroke="#fff1fb" stroke-width="3"/>
+  <path d="M257 269q53-21 113 0v33q0 15-18 15h-78q-17 0-17-15z" fill="url(#rose)"/>
+  <path d="M239 269q0-16 14-16 12 0 14 17v30q-10 10-24 0zm120 1q0-16 14-17 14 0 14 16l-4 31q-14 10-24 0z" fill="url(#rose)" stroke="#ffe6f4" stroke-width="2"/>
+  <use href="#heart" x="313" y="241" fill="#fff0fa"/>
+</g>
+<g id="chair-special" filter="url(#shadow)">
+  <ellipse cx="313" cy="330" rx="79" ry="17" fill="#694470" opacity=".21"/>
+  <path d="M260 307h106l-13 21h-80z" fill="url(#gold)"/>
+  <path d="M254 276q-36-60-7-66 1-31 29-24 10-28 37-11 26-17 37 11 27-7 28 24 29 6-7 66z" fill="url(#lilac)" stroke="#fff3ff" stroke-width="3"/>
+  <path d="M247 214l45 59m-16-83 29 82m8-92v92m36-82-28 82m55-58-43 59" stroke="#9c76cc" opacity=".5" stroke-width="3"/>
+  <path d="M245 271q22-9 68-9t68 9l-6 29q-6 17-26 17h-72q-21 0-26-17z" fill="url(#lilac)" stroke="#eddaff" stroke-width="3"/>
+  <circle cx="313" cy="285" r="9" fill="url(#gold)"/>
+</g>
+<g id="plant-basic" filter="url(#shadow)">
+  <path d="M132 288q-1-41 11-65m-13 57-22-31m25 19 24-19" fill="none" stroke="#548b85" stroke-width="4"/>
+  <g fill="url(#green)"><ellipse cx="144" cy="222" rx="15" ry="11" transform="rotate(-22 144 222)"/><ellipse cx="108" cy="245" rx="16" ry="11" transform="rotate(20 108 245)"/><ellipse cx="158" cy="247" rx="15" ry="10" transform="rotate(-28 158 247)"/></g>
+  <path d="M109 276h46l-6 36q-17 11-34 0z" fill="url(#rose)"/><rect x="106" y="274" width="52" height="9" rx="4.5" fill="#ffe8f5"/>
+</g>
+<g id="plant-special" filter="url(#shadow)">
+  <path d="M132 281q-4-60 22-61m-25 63q1-39-22-40" fill="none" stroke="#53978b" stroke-width="4"/>
+  <path d="M132 275q-34-30-40-12 10 18 40 12m0 0q30-28 39-14-14 22-39 14" fill="url(#green)"/>
+  <g fill="url(#lilac)" stroke="#ffedfd" stroke-width="1.5"><path d="M153 222q-20 9-18-5-13-13 6-14 5-16 14-3 14-8 15 7 12 15-17 15z"/><path d="M107 247q-17 8-18-4-9-12 6-13 3-11 11-4 13-8 14 6 10 12-13 15z"/></g>
+  <circle cx="151" cy="212" r="5" fill="#ffe5a4"/><circle cx="105" cy="238" r="4" fill="#ffe5a4"/>
+  <path d="M107 280h50l-7 30q-18 15-36 0z" fill="url(#lilac)"/><rect x="104" y="274" width="56" height="11" rx="5" fill="#f4e6ff"/>
+</g>
+<g id="lamp-basic">
+  <circle cx="557" cy="196" r="74" fill="url(#glow)"/>
+  <path d="M555 208h6v103h-6z" fill="#9b75af"/><ellipse cx="558" cy="311" rx="20" ry="7" fill="url(#gold)"/>
+  <circle cx="558" cy="192" r="23" fill="url(#gold)" stroke="#fff5e4" stroke-width="3"/><ellipse cx="552" cy="184" rx="8" ry="5" fill="#fff9e7"/>
+</g>
+<g id="lamp-special">
+  <circle cx="557" cy="193" r="91" fill="url(#glow)"/>
+  <path d="M555 207h6v104h-6z" fill="#9b75af"/><ellipse cx="558" cy="311" rx="24" ry="7" fill="url(#lilac)"/>
+  <path d="M558 161l9 18 21 3-15 15 4 21-19-10-19 10 4-21-15-15 21-3z" fill="url(#gold)" stroke="#fff3d4" stroke-width="4" stroke-linejoin="round"/>
+</g>
+<g id="wall-basic" filter="url(#shadow)">
+  <rect x="450" y="45" width="68" height="51" rx="9" fill="url(#rose)" stroke="#fff4fb" stroke-width="4"/>
+  <rect x="458" y="53" width="52" height="35" rx="4" fill="#f8eaff"/>
+  <g fill="none" stroke-width="3" stroke-linecap="round"><path d="M470 77a14 14 0 0 1 28 0" stroke="#ed91bd"/><path d="M474 77a10 10 0 0 1 20 0" stroke="#f9ce8e"/><path d="M478 77a6 6 0 0 1 12 0" stroke="#85cfc1"/></g>
+</g>
+<g id="wall-special" filter="url(#shadow)">
+  <path d="M428 53q56 45 112 0" fill="none" stroke="#a47db7" stroke-width="3"/>
+  <use href="#heart" x="441" y="74" fill="url(#rose)"/><use href="#heart" x="462" y="83" fill="url(#gold)"/><use href="#heart" x="484" y="87" fill="url(#lilac)"/><use href="#heart" x="506" y="83" fill="url(#rose)"/><use href="#heart" x="527" y="74" fill="url(#gold)"/>
+</g>
+</svg>

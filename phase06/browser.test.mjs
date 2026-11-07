@@ -341,7 +341,14 @@ for (const [width, height, touch] of devices) {
           assert.equal(await stars(), String(total));
           if (record) await shot(id + '-happy', '#done .portrait');
           results.push({ id, opening, mask, sequence, cleanserAlpha: treated, stars: total });
-          await tap('#again');
+          if (results.length === 1) {
+            await tap('#goHome');
+            await el('#home.on #roomTitle').waitFor();
+            assert.equal(await el('#stars').innerText(), String(total));
+            await tap('#play');
+          } else {
+            await tap('#again');
+          }
         }
       }
       await page.reload();

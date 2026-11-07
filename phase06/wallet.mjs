@@ -1,3 +1,4 @@
+import { decor, decorKeys } from '../phase07/decor.mjs?v=07b';
 import { products } from './products.mjs?v=06b';
 
 export const SAVE_KEY = 'dsp-progress';
@@ -53,8 +54,14 @@ export function createWallet() {
     const products = ids(saved?.products);
     const refund = clientRefund(saved, clients, products);
     const balance = validAmount(saved?.balance) ? saved.balance + refund : legacy;
+    const decorations = ids(saved?.decorations).filter(id => decorKeys.includes(id));
+    const room = Object.fromEntries(decorations
+      .filter(id => saved?.room?.[id] === 'special')
+      .map(id => [id, 'special']));
     return {
-      version: 2,
+      version: 3,
+      decorations,
+      room,
       balance,
       earned: Math.max(balance, validAmount(saved?.earned) ? saved.earned : balance),
       clients,
@@ -118,6 +125,20 @@ export function createWallet() {
         if (draft.balance < price) return 'insufficient';
         draft.balance -= price;
         draft.products.push(id);
+        return 'ok';
+      });
+    },
+    setDecoration(id, variant, { purchase = false } = {}) {
+      return change(draft => {
+        if (!decorKeys.includes(id) || !['basic', 'special'].includes(variant)) return 'unavailable';
+        if (variant === 'special' && !draft.decorations.includes(id)) {
+          if (!purchase) return 'unavailable';
+          if (draft.balance < decor[id].price) return 'insufficient';
+          draft.balance -= decor[id].price;
+          draft.decorations.push(id);
+        }
+        if (variant === 'special') draft.room[id] = variant;
+        else delete draft.room[id];
         return 'ok';
       });
     },
