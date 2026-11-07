@@ -136,7 +136,7 @@ export function createPaintView(context) {
         visible = softened;
       }
       context.save();
-      context.globalAlpha = { shadow: .63, blush: .38, lips: .64, gloss: .23 }[key];
+      context.globalAlpha = { shadow: .63, blush: .65, lips: .64, gloss: .23 }[key];
       context.drawImage(visible, 0, 0);
       context.restore();
     }
