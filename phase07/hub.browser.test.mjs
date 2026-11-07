@@ -66,6 +66,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         assert.match(await el('[data-variant="special"]').innerText(), new RegExp(String(entry.price)));
         assert.deepEqual((await saved()).room, {});
       }
+      assert.equal(await page.evaluate(() => document.documentElement.scrollHeight), height);
       await shot('03-personalizzazione');
       await tap('#applyDecor');
       await el('#decorConfirm[open]').waitFor();

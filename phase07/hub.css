@@ -56,3 +56,6 @@
   #home:has(#decorPanel:not([hidden])) .room-intro { display: none; }
   #home:has(#decorPanel:not([hidden])) #roomScene { max-width: 273px; }
 }
+@media (max-height: 790px) and (min-width: 600px) {
+  #home:has(#decorPanel:not([hidden])) #roomScene { max-width: 410px; }
+}
