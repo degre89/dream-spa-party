@@ -10,7 +10,7 @@ function columns(context, path) {
   const result = new Map();
   for (let x = 139; x < 374; x++) {
     let top, bottom;
-    for (let y = 235; y < 317; y++) {
+    for (let y = 232; y < 335; y++) {
       if (!context.isPointInPath(path, x + .5, y + .5)) continue;
       top ??= y;
       bottom = y + 1;
@@ -88,15 +88,16 @@ function reflection(context, x, y, rx, ry, opacity) {
   context.restore();
 }
 
-export function drawGloss(context, client, coverage, pulse) {
+export function drawGloss(context, [center, lower, upper], coverage, pulse) {
   context.globalCompositeOperation = 'source-over';
   context.clearRect(0, 0, 512, 640);
-  const lower = client === 'sofia' ? 393 : 392;
+  context.save();
+  context.translate(center - 256, 0);
   reflection(context, 254, lower, 22, 3, .65);
-  reflection(context, 246, 379, 14, 2.1, .30);
+  reflection(context, 246, upper, 14, 2.1, .30);
   reflection(context, 270, lower - 2, 7, 2.2, .34);
   for (const [x, y, size] of [[240, lower - 2, 1.7], [249, lower, 1.3],
-    [259, lower + 1, 1.8], [271, lower - 3, 1.6], [265, 379, 1.4], [279, 382, 1.3]]) {
+    [259, lower + 1, 1.8], [271, lower - 3, 1.6], [265, upper, 1.4], [279, upper + 3, 1.3]]) {
     reflection(context, x, y, size, size, .90);
   }
   context.save();
@@ -104,6 +105,7 @@ export function drawGloss(context, client, coverage, pulse) {
   context.globalAlpha = .50 + pulse * .45;
   context.fillStyle = '#fff5ff';
   context.fill(new Path2D('M0 -3 .65 -.65 3 0 .65 .65 0 3 -.65 .65 -3 0 -.65 -.65Z'));
+  context.restore();
   context.restore();
   // All specular effects are confined to coverage from the actual applicator.
   context.globalCompositeOperation = 'destination-in';

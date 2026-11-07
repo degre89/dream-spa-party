@@ -1,7 +1,7 @@
 import { clients } from '../phase03/clients.mjs?v=07a';
 import { drawExpression } from '../phase04/expressions.mjs?v=08a';
-import { palettes } from './geometry.mjs?v=08ar';
-import { createLook, allowed, createPaintView } from './paint.mjs?v=08ar';
+import { faces, palettes } from './geometry.mjs?v=08b1';
+import { createLook, allowed, createPaintView } from './paint.mjs?v=08b1';
 
 export function mountMakeup({ onHome, bindAction }) {
   const get = id => document.getElementById('studio' + id);
@@ -173,6 +173,7 @@ export function mountMakeup({ onHome, bindAction }) {
       result = false;
       selection.hidden = true;
       editor.hidden = false;
+      editor.dataset.client = id;
       get('Clients').hidden = false;
       get('Tools').hidden = false;
       get('Result').hidden = true;
@@ -190,7 +191,7 @@ export function mountMakeup({ onHome, bindAction }) {
     }
   }
 
-  for (const id of ['azzurrina', 'sofia']) {
+  for (const id of Object.keys(faces)) {
     const entry = clients[id];
     const button = document.createElement('button');
     button.type = 'button';
@@ -239,10 +240,16 @@ export function mountMakeup({ onHome, bindAction }) {
       stroke = { category, color: selected()[1], points: [] };
       look.strokes.push(stroke);
     }
+    const closeForBrush = category === 'shadow' && !closed;
     stroke.points.push(...valid);
-    // Incremental stamps have the same result as replaying the session record.
-    paint.append(client, { ...stroke, points: valid });
-    paint.draw(look, null, shinePulse);
+    if (closeForBrush) {
+      closed = true;
+      redraw();
+    } else {
+      // Incremental stamps have the same result as replaying the session record.
+      paint.append(client, { ...stroke, points: valid });
+      paint.draw(look, null, shinePulse);
+    }
     get('Undo').disabled = false;
     if (stroke.category !== 'lips' || stroke.color !== null) shimmer(valid.at(-1));
   }
@@ -310,6 +317,7 @@ export function mountMakeup({ onHome, bindAction }) {
   function stopGesture() {
     stopShine();
     const pointer = active;
+    if (stroke?.category === 'shadow') closed = false;
     active = null;
     stroke = null;
     previous = null;
@@ -318,8 +326,13 @@ export function mountMakeup({ onHome, bindAction }) {
     if (pointer !== null && surface.hasPointerCapture(pointer)) surface.releasePointerCapture(pointer);
     redraw();
   }
-  surface.addEventListener('pointercancel', event => { if (active === event.pointerId) stopGesture(); });
-  surface.addEventListener('lostpointercapture', () => { if (active !== null) stopGesture(); });
+  function cancelGesture() {
+    if (active === null) return;
+    stopGesture();
+    scheduleBlink();
+  }
+  surface.addEventListener('pointercancel', event => { if (active === event.pointerId) cancelGesture(); });
+  surface.addEventListener('lostpointercapture', cancelGesture);
   surface.addEventListener('pointerleave', () => {
     if (active === null) { preview = null; cursor.setAttribute('hidden', ''); redraw(); }
   });

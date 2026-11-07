@@ -57,7 +57,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       assert.equal(await el('.room-shine').evaluate(node => getComputedStyle(node).animationName), 'none');
       await tap('#makeup');
       await el('#makeupStudio.on').waitFor();
-      assert.equal(await el('#studioCards button').count(), 2);
+      assert.equal(await el('#studioCards button:enabled').count(), 10);
       await shot('02-makeup-studio');
       await tap('#studioHome');
       await tap('#play');

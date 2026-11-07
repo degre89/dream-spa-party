@@ -1,5 +1,5 @@
-import { faces, palettes } from './geometry.mjs?v=08ar';
-import { createShadowFinish, drawGloss, makeupBuffer } from './finish.mjs?v=08ar';
+import { faces, palettes } from './geometry.mjs?v=08b1';
+import { createShadowFinish, drawGloss, makeupBuffer } from './finish.mjs?v=08b1';
 
 // One versioned session record per client. Coordinates remain in portrait units.
 export function createLook(client) {
@@ -150,7 +150,7 @@ export function createPaintView(context) {
     }
     // The gloss highlight is clipped to pigment actually applied by the player.
     if (look.strokes.some(stroke => layerKey(stroke) === 'gloss')) {
-      drawGloss(light, look.client, layers.get('gloss'), pulse);
+      drawGloss(light, faces[look.client].gloss, layers.get('gloss'), pulse);
       context.drawImage(light.canvas, 0, 0);
     }
     for (const decoration of look.decorations) drawDecoration(context, decoration);

@@ -1,3 +1,5 @@
+import { additionalFaces } from './client-geometry.mjs?v=08b1';
+
 // Traced against the 512 × 640 source portraits. Left/right are screen sides.
 // Open-eye arcs sit above the iris and preserve the lash line.
 export const faces = {
@@ -15,6 +17,7 @@ export const faces = {
       'M211 376 Q225 382 243 376 Q250 373 256 376 Q263 373 273 376 Q286 381 300 376 Q285 385 256 387 Q229 385 211 376Z',
       'M215 379 Q252 394 298 378 C282 393 275 398 255 399 Q233 399 215 379Z',
     ],
+    gloss: [256, 393, 379],
     jewels: [[178, 339, 25, 12], [334, 339, 25, 12], [257, 204, 18, 13]],
   },
   azzurrina: {
@@ -31,8 +34,10 @@ export const faces = {
       'M216 377 Q230 382 245 376 Q251 373 256 376 Q262 374 271 376 Q285 381 297 377 Q280 386 257 386 Q235 385 216 377Z',
       'M220 380 Q253 392 295 379 C280 392 272 398 257 398 Q237 397 220 380Z',
     ],
+    gloss: [256, 392, 379],
     jewels: [[181, 334, 20, 13], [332, 334, 20, 13], [256, 203, 15, 13]],
   },
+  ...additionalFaces,
 };
 
 export const palettes = {
