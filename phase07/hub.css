@@ -10,9 +10,6 @@
 #roomTitle { color: #702762; text-shadow: 0 2px #fff; font-size: clamp(2.2rem, 10vw, 3.7rem); line-height: 1; margin: 4px 0 0; }
 .room-intro { margin: 0; font-size: .86rem; }
 #roomScene { display: block; flex: none; width: 100%; height: auto; border: 3px solid #fff7fd; border-radius: 22px; box-shadow: 0 6px 15px #6d3e6e31; }
-.room-shine { animation: room-twinkle 3.2s ease-in-out infinite alternate; }
-@keyframes room-twinkle { from { opacity: .25; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .room-shine { animation: none; } }
 .hub-menu, #decorPanel { width: 100%; }
 .hub-activities, #decorVariants { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .hub-card {
@@ -53,9 +50,45 @@
 #home button { -webkit-tap-highlight-color: transparent; }
 @media (max-height: 620px) and (max-width: 380px) {
   #home:has(#decorPanel:not([hidden])) { gap: 5px; }
-  #home:has(#decorPanel:not([hidden])) .room-intro { display: none; }
-  #home:has(#decorPanel:not([hidden])) #roomScene { max-width: 273px; }
+  #home:has(#decorPanel:not([hidden])) :is(#roomTitle, .room-intro) { display: none; }
+}
+
+/* Keep the activity cards in view while distributing the room on tall phones. */
+@media (min-height: 740px) and (max-width: 540px) {
+  #home:not(:has(#decorPanel:not([hidden]))) { gap: 12px; padding-bottom: max(32px, env(safe-area-inset-bottom)); }
+  #home:not(:has(#decorPanel:not([hidden]))) #roomTitle { margin-top: clamp(16px, 4dvh, 42px); }
+  #home:not(:has(#decorPanel:not([hidden]))) #roomScene { margin-block: auto; width: calc(100% + 8px); }
+  #home .hub-card { min-height: clamp(108px, 14dvh, 130px); }
+  #home .hub-card img { width: 53px; height: 53px; }
+  #home .hub-menu > .hub-actions { margin-top: 16px; }
+}
+#decorVariants button {
+  grid-template-rows: 49px 2.15em auto;
+  align-items: center;
+  padding: 4px 3px;
+}
+#decorVariants svg { display: block; width: 92px; max-width: 100%; height: 49px; pointer-events: none; }
+#decorVariants strong { line-height: 1.05; }
+#roomScene :is(.mirror-shine, .room-shine, #decorEffect) { pointer-events: none; }
+.mirror-shine { animation: mirror-glimmer 8s ease-in-out infinite; }
+.room-shine { animation: room-glimmer 7s ease-in-out infinite; }
+.room-shine path:nth-child(2) { opacity: .55; }
+.room-shine path:nth-child(3) { opacity: .7; }
+@keyframes mirror-glimmer {
+  0%, 60%, 100% { opacity: .08; }
+  75% { opacity: .75; }
+}
+@keyframes room-glimmer {
+  0%, 50%, 100% { opacity: .23; }
+  28%, 78% { opacity: .8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #roomScene :is(.mirror-shine, .room-shine) { animation: none; opacity: .45; }
+}
+@media (max-height: 620px) and (max-width: 380px) {
+  #home:has(#decorPanel:not([hidden])) #roomScene { max-width: 246px; }
 }
 @media (max-height: 790px) and (min-width: 600px) {
-  #home:has(#decorPanel:not([hidden])) #roomScene { max-width: 410px; }
+  #home:has(#decorPanel:not([hidden])) .room-intro { display: none; }
+  #home:has(#decorPanel:not([hidden])) #roomScene { max-width: 360px; }
 }

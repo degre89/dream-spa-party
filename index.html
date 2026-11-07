@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#592754">
   <title>Dream Spa Party</title>
   <link rel="stylesheet" href="spa.css?v=06c">
-  <link rel="stylesheet" href="phase07/hub.css?v=07b">
-  <script type="module" src="spa.js?v=07b"></script>
+  <link rel="stylesheet" href="phase07/hub.css?v=07br">
+  <script type="module" src="spa.js?v=07br"></script>
 </head>
 <body>
 <main class="app">
@@ -23,6 +23,16 @@
       <use data-decor="lamp" href="assets/spa-decor.svg#lamp-basic"/>
       <use data-decor="plant" href="assets/spa-decor.svg#plant-basic"/>
       <use data-decor="chair" href="assets/spa-decor.svg#chair-basic"/>
+      <g class="mirror-shine" aria-hidden="true" fill="#fffaf0">
+        <path d="M291 102q1 8 8 9-7 2-8 9-2-7-9-9 7-1 9-9z"/>
+        <circle cx="300" cy="99" r="2.5"/>
+      </g>
+      <g id="decorEffect" aria-hidden="true" fill="#fff6c5">
+        <g opacity="0">
+          <path d="M0-20q2 15 16 17Q2 0 0 15-2 0-16-3-2-5 0-20z"/>
+          <path d="M-26-6q1 7 8 8-7 2-8 9-2-7-9-9 7-1 9-8zM23-14q1 7 8 8-7 2-8 9-2-7-9-9 7-1 9-8z"/>
+        </g>
+      </g>
       <g class="room-shine" aria-hidden="true" fill="#fff8d8">
         <path d="M220 108q2 9 10 10-8 1-10 10-2-9-10-10 8-1 10-10z"/>
         <path d="M391 64q2 9 10 10-8 1-10 10-2-9-10-10 8-1 10-10z"/>
@@ -32,7 +42,7 @@
     <div id="hubMenu" class="hub-menu">
       <nav class="hub-activities" aria-label="Attività">
         <button class="hub-card" id="play" data-activity="skin-care" disabled><img src="assets/jar-strawberry.svg" alt=""><strong>Skin Care Spa</strong><small>Scegli una cliente</small></button>
-        <button class="hub-card" id="makeup" data-activity="makeup" aria-haspopup="dialog"><img src="assets/makeup-emblem.svg" alt=""><strong>Makeup Studio</strong><small>Prossimamente</small></button>
+        <button class="hub-card" id="makeup" data-activity="makeup" aria-haspopup="dialog"><img src="assets/makeup-emblem.svg?v=07br" alt=""><strong>Makeup Studio</strong><small>Prossimamente</small></button>
       </nav>
       <div class="hub-actions"><button class="cta" id="openDecor" aria-controls="decorPanel" aria-expanded="false">✧ Decora la mia Spa</button><button class="pill" id="openShop">✦ Negozio</button></div>
       <p id="status" role="status"></p>
@@ -44,7 +54,7 @@
       <div class="decor-actions"><p id="decorStatus" role="status"></p><button class="cta" id="applyDecor"></button></div>
     </section>
     <dialog class="room-dialog" id="makeupInfo" aria-labelledby="makeupTitle">
-      <img src="assets/makeup-emblem.svg" alt="">
+      <img src="assets/makeup-emblem.svg?v=07br" alt="">
       <h2 id="makeupTitle">Makeup Studio</h2>
       <p>Prossimamente! Qui potrai creare look da favola per le tue clienti.</p>
       <form method="dialog"><button class="cta">Torna alla spa</button></form>

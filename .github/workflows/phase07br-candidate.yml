@@ -1,0 +1,41 @@
+name: Phase 07-BR candidate browser checks
+on:
+  push:
+    branches: [development/phase07br-spa-polish]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport: [320x568, 412x915, 1280x720]
+    env:
+      SPA_VIEWPORT: ${{ matrix.viewport }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - name: Test candidate on the local runner
+        run: |
+          set -o pipefail
+          mkdir -p test-results
+          python3 -m http.server 8000 --bind 127.0.0.1 > test-results/server.log 2>&1 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          for attempt in {1..20}; do
+            if curl -fsS http://127.0.0.1:8000/ > /dev/null; then break; fi
+            sleep 1
+          done
+          node --test --test-concurrency=1 --test-reporter=tap phase07/hub.browser.test.mjs phase04/browser.test.mjs phase06/browser.test.mjs phase06/shop.browser.test.mjs phase06/wallet.test.mjs phase03/facial-state.test.mjs phase04/journey.test.mjs | tee test-results/report.tap
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dream-spa-phase07br-candidate-${{ matrix.viewport }}
+          path: test-results/
+          if-no-files-found: error

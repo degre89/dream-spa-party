@@ -1,5 +1,16 @@
 import { decor, decorKeys } from './decor.mjs?v=07b';
 
+// Crops and effect origins use the coordinates of the shared room SVG.
+const objectViews = {
+  mirror: { crop: '240 39 150 168', center: [317, 112] },
+  chair: { crop: '222 163 182 175', center: [313, 240] },
+  rug: { crop: '145 304 328 100', center: [309, 360] },
+  plant: { crop: '82 190 98 131', center: [134, 259] },
+  lamp: { crop: '519 153 78 172', center: [558, 194] },
+  wall: { crop: '419 35 128 75', center: [484, 76] },
+};
+const svgNS = 'http://www.w3.org/2000/svg';
+
 export function mountHub({ wallet, onSkinCare, changed, bindAction }) {
   const room = document.querySelector('#home');
   const get = id => room.querySelector('#' + id);
@@ -16,6 +27,26 @@ export function mountHub({ wallet, onSkinCare, changed, bindAction }) {
   let category = decorKeys[0];
   let variant;
   let pending = false;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const effect = get('decorEffect');
+  const sparks = effect.firstElementChild;
+  let sparkle;
+
+  function shine(celebrate = false) {
+    sparkle?.cancel();
+    if (reducedMotion.matches) return;
+    const [x, y] = objectViews[category].center;
+    effect.setAttribute('transform', 'translate(' + x + ' ' + y + ')');
+    sparkle = sparks.animate([
+      { opacity: 0, transform: 'translateY(5px) scale(.8)' },
+      { opacity: celebrate ? .95 : .7, offset: .35 },
+      { opacity: 0, transform: 'translateY(-9px) scale(1.2)' },
+    ], { duration: celebrate ? 720 : 460, easing: 'ease-out' });
+  }
+
+  reducedMotion.addEventListener('change', () => {
+    if (reducedMotion.matches) sparkle?.cancel();
+  });
 
   const equipped = id => wallet.state.room[id] ?? 'basic';
   const owned = () => variant === 'basic' || wallet.state.decorations.includes(category);
@@ -34,7 +65,10 @@ export function mountHub({ wallet, onSkinCare, changed, bindAction }) {
     for (const button of variants.children) {
       const key = button.dataset.variant;
       button.setAttribute('aria-pressed', key === variant);
-      button.firstElementChild.textContent = entry[key];
+      const thumbnail = button.firstElementChild;
+      thumbnail.setAttribute('viewBox', objectViews[category].crop);
+      thumbnail.firstElementChild.setAttribute('href', 'assets/spa-decor.svg#' + category + '-' + key);
+      button.querySelector('strong').textContent = entry[key];
       button.lastElementChild.textContent = key === 'basic' ? 'Gratis' :
         wallet.state.decorations.includes(category) ? 'Acquistato' : entry.price + ' ★';
     }
@@ -51,6 +85,7 @@ export function mountHub({ wallet, onSkinCare, changed, bindAction }) {
     try {
       const result = await wallet.setDecoration(category, variant, { purchase });
       if (confirmation.open) confirmation.close();
+      if (result === 'ok') shine(purchase);
       status.textContent = result === 'ok' ? 'Decorazione applicata! ✧' :
         result === 'insufficient' ? 'Ti servono più stelline.' : 'Impossibile salvare. Riprova.';
     } finally {
@@ -82,13 +117,17 @@ export function mountHub({ wallet, onSkinCare, changed, bindAction }) {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.variant = key;
-    button.append(document.createElement('strong'), document.createElement('small'));
+    const thumbnail = document.createElementNS(svgNS, 'svg');
+    thumbnail.setAttribute('aria-hidden', 'true');
+    thumbnail.append(document.createElementNS(svgNS, 'use'));
+    button.append(thumbnail, document.createElement('strong'), document.createElement('small'));
     variants.append(button);
     button.addEventListener('click', () => {
       if (pending) return;
       variant = key;
       status.textContent = '';
       refresh();
+      shine();
     });
   }
 

@@ -1,4 +1,4 @@
-name: Phase 07-A live Pages checks
+name: Phase 07-BR live Pages checks
 
 on:
   push:
@@ -12,6 +12,7 @@ on:
       - 'phase04/**'
       - 'phase05/**'
       - 'phase06/**'
+      - 'phase07/**'
       - '.github/scripts/verify-pages.py'
       - '.github/workflows/phase03-live.yml'
   workflow_dispatch:
@@ -37,7 +38,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase07a-live-assets
+          name: dream-spa-phase07br-live-assets
           path: test-results/
           if-no-files-found: error
 
@@ -61,10 +62,10 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p test-results
-          node --test --test-concurrency=1 --test-reporter=tap phase04/browser.test.mjs phase06/browser.test.mjs phase06/shop.browser.test.mjs phase06/wallet.test.mjs | tee test-results/report.tap
+          node --test --test-concurrency=1 --test-reporter=tap phase04/browser.test.mjs phase06/browser.test.mjs phase06/shop.browser.test.mjs phase06/wallet.test.mjs phase07/hub.browser.test.mjs | tee test-results/report.tap
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: dream-spa-phase07a-live-${{ matrix.viewport }}
+          name: dream-spa-phase07br-live-${{ matrix.viewport }}
           path: test-results/
           if-no-files-found: error

@@ -1,4 +1,4 @@
-import { mountHub } from './phase07/hub.mjs?v=07b';
+import { mountHub } from './phase07/hub.mjs?v=07br';
 import { createWallet, SAVE_KEY } from './phase06/wallet.mjs?v=07b';
 import { mountShop } from './phase06/shop.mjs?v=07b';
 import { products } from './phase06/products.mjs?v=06b';

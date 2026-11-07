@@ -49,6 +49,12 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width);
       await el('#play:enabled').waitFor();
       await shot('01-stanza-e-hub');
+      for (const id of ['roomScene', 'play', 'makeup', 'openDecor', 'openShop']) {
+        const box = await el('#' + id).boundingBox();
+        assert.ok(box && box.y >= 0 && box.y + box.height <= height, id + ' fits the initial viewport');
+      }
+      assert.equal(await el('.mirror-shine').evaluate(node => getComputedStyle(node).animationName), 'none');
+      assert.equal(await el('.room-shine').evaluate(node => getComputedStyle(node).animationName), 'none');
       await tap('#makeup');
       await el('#makeupInfo[open]').waitFor();
       assert.match(await el('#makeupInfo').innerText(), /Prossimamente/);
@@ -62,11 +68,30 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       for (const [id, entry] of Object.entries(decor)) {
         await category(id);
         await tap('[data-variant="special"]');
+        for (const key of ['basic', 'special']) {
+          const preview = el('[data-variant="' + key + '"] svg');
+          const box = await preview.boundingBox();
+          assert.ok(box && box.width >= 48 && box.height >= 44);
+          assert.match(await preview.locator('use').getAttribute('href'), new RegExp('#' + id + '-' + key + '$'));
+          assert.ok(await preview.locator('use').evaluate(node => node.getBBox().width > 0));
+        }
+        assert.equal(await el('#decorEffect').evaluate(node => node.getAnimations({ subtree: true }).length), 0);
         assert.match(await layer(id), new RegExp('#' + id + '-special$'));
         assert.match(await el('[data-variant="special"]').innerText(), new RegExp(String(entry.price)));
         assert.deepEqual((await saved()).room, {});
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollHeight), height);
+      const done = await el('#closeDecor').boundingBox();
+      assert.ok(done && done.height >= 44 && done.y + done.height <= height);
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      assert.equal(await el('.mirror-shine').evaluate(node => getComputedStyle(node).animationName), 'mirror-glimmer');
+      await tap('[data-variant="basic"]');
+      await el('#decorEffect').evaluate(node => {
+        const [sparkle] = node.getAnimations({ subtree: true });
+        if (!sparkle || sparkle.effect.getTiming().duration !== 460) throw new Error('Missing preview sparkle');
+      });
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await tap('[data-variant="special"]');
       await shot('03-personalizzazione');
       await tap('#applyDecor');
       await el('#decorConfirm[open]').waitFor();

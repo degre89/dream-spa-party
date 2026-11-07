@@ -2,6 +2,11 @@
 <defs><linearGradient id="case" x2="0%" y2="100%"><stop stop-color="#ffe5fc"/><stop offset="1" stop-color="#a971cb"/></linearGradient><linearGradient id="tip" x2="0%" y2="100%"><stop stop-color="#ffdfc8"/><stop offset="1" stop-color="#ed75ae"/></linearGradient></defs>
 <path d="M13 53Q4 40 19 29t33-4q15 5 11 18-3 11-15 11-6 0-5 7 1 7-10 7-11-1-20-15z" fill="url(#case)" stroke="#fff0fc" stroke-width="3"/>
 <circle cx="24" cy="38" r="5" fill="#ff98c7"/><circle cx="35" cy="33" r="5" fill="#ffdc8c"/><circle cx="48" cy="35" r="5" fill="#a4e6e0"/><circle cx="18" cy="49" r="5" fill="#c6a8ff"/>
-<path d="M39 65l22-40 7 4-24 39q-5 5-5-3z" fill="#905fbb"/><path d="M57 31l5-9 8 4-6 10z" fill="#ffda91"/><path d="M61 23q-2-8 11-14 4 13-3 18z" fill="url(#tip)"/>
+<path d="M37 22l4-10 3 1-4 11z" fill="#6db9cb"/><path d="M41 12q-1-5 5-8 2 5-2 10z" fill="#a9e5d8"/><path d="M39 65l22-40 7 4-24 39q-5 5-5-3z" fill="#905fbb"/><path d="M57 31l5-9 8 4-6 10z" fill="#ffda91"/><path d="M61 23q-2-8 11-14 4 13-3 18z" fill="url(#tip)"/>
+<g transform="rotate(16 60 58)">
+  <rect x="54" y="52" width="11" height="21" rx="3" fill="#8a59b9" stroke="#f8dbfb" stroke-width="1.5"/>
+  <path d="M55 57V48q0-3 3-3h3q3 0 3 3v9z" fill="#ffd582"/>
+  <path d="M57 46v-7q0-3 5-6v13z" fill="#eb6a9f" stroke="#ffb8d4" stroke-width="1"/>
+</g>
 <path d="M29 8q2 7 9 9-7 2-9 9-2-7-9-9 7-2 9-9zm39 40q1 5 6 6-5 1-6 6-1-5-6-6 5-1 6-6z" fill="#fff3b7" stroke="#e5adbd" stroke-width="1.5"/>
 </svg>

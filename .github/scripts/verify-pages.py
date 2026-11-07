@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 base_url = os.environ["SPA_URL"]
 tracked = subprocess.check_output(
     ["git", "ls-files", "-z", "--", "index.html", "preview-v02.html", "spa.css",
-     "spa.js", "assets/*", "phase0[3456]/*.mjs"],
+     "spa.js", "assets/*", "phase0[34567]/*.mjs", "phase07/*.css"],
     text=True,
 ).split("\0")
 paths = {name for name in tracked if name and not name.endswith(".test.mjs")}
