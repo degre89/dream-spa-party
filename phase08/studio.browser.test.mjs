@@ -30,7 +30,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
     await mkdir(dir, { recursive: true });
     const browser = await chromium.launch(process.env.SPA_CHROME_PATH ?
       { executablePath: process.env.SPA_CHROME_PATH, args: ['--no-sandbox'] } : { channel: 'chrome' });
-    const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch, reducedMotion: 'reduce' });
+    const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch, deviceScaleFactor: touch ? 2 : 1, reducedMotion: 'reduce' });
     if (process.env.SPA_TRACE) await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
     const page = await context.newPage();
     const errors = [], checks = [];
@@ -79,12 +79,55 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       }
     }
     const sweep = (x, y, length = 26) => Array.from({ length: 9 }, (_, i) => [x - length / 2 + length * i / 8, y]);
-    const finish = name => tap('#studioFinishes button:text-is("' + name + '")');
+    let category, shade;
+    const product = { shadow: 'Ombretto', blush: 'Blush', lips: 'Rossetto', jewels: 'Decorazione' };
+    const expanded = () => el('#studioCart').getAttribute('aria-expanded');
+    const activeChoice = () => el('#studioChoice').innerText();
+    const chooseProduct = name => tap('#studioProducts button:text-is("' + name + '")');
+    const chooseColor = label => tap('#studioPalette button[aria-label="' + label + '"]');
+    async function open(id) {
+      if (!(await el('#studioCategories [data-category="' + id + '"][aria-pressed=true]').count())) {
+        await tap('#studioCategories [data-category="' + id + '"]');
+      }
+      assert.equal(await expanded(), 'true');
+    }
+    async function ensureProduct() {
+      await open(category);
+      if (!await el('#studioProducts [aria-pressed=true]').count()) await chooseProduct(product[category]);
+    }
+    async function finish(name) {
+      if (await expanded() === 'false' || await el('#studioFinishes').isHidden()) await color(shade);
+      assert.equal(await expanded(), 'true', 'color browsing keeps the tray open');
+      await tap('#studioFinishes button:text-is("' + name + '")');
+      assert.equal(await expanded(), 'false', 'a finish activates the tool and closes the tray');
+      assert.match(await activeChoice(), new RegExp(name));
+    }
     const imageBytes = selector => el(selector).evaluate(canvas => canvas.toDataURL());
     const paintBytes = () => imageBytes('#studioPaint');
     const eyeState = () => el('#studioPortrait').getAttribute('data-eyes');
-    async function tool(id) { await tap('#studioCategories [data-category="' + id + '"]'); }
-    async function color(label) { await tap('#studioPalette button[aria-label="' + label + '"]'); }
+    async function tool(id) {
+      category = id;
+      shade = { shadow: 'Rosa confetto', blush: 'Rosa', lips: 'Fucsia' }[id];
+      await ensureProduct();
+    }
+    async function color(label) {
+      shade = label;
+      const prior = await activeChoice();
+      if (label === 'Gloss trasparente') {
+        await open('lips');
+        await chooseProduct('Gloss');
+      } else {
+        await ensureProduct();
+        await chooseColor(label);
+      }
+      if (category === 'jewels' || label === 'Gloss trasparente') {
+        assert.equal(await expanded(), 'false');
+        assert.ok((await activeChoice()).includes(label));
+      } else {
+        assert.equal(await expanded(), 'true');
+        assert.equal(await activeChoice(), prior, 'a draft does not replace the active product');
+      }
+    }
     async function clear() { await tap('#studioClear'); }
     const maskLeaks = (id, closed, category = 'shadow') => page.evaluate(async ({ id, closed, category }) => {
       const { regions } = await import('./phase08/paint.mjs');
@@ -130,20 +173,63 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await select(client);
         assert.equal(await sumAlpha(), 0, 'look starts empty for each client');
         await portraitShot(client, 'prima');
-        const portraitMatches = await page.evaluate(async id => {
+        const portraitMatches = async (eyes = 'open') => page.evaluate(async ({ id, eyes }) => {
           const { clients } = await import('./phase03/clients.mjs');
           const portrait = document.querySelector('#studioPortrait');
-          const image = new Image();
-          image.src = 'assets/' + clients[id].portrait;
-          await image.decode();
+          const load = async asset => {
+            const image = new Image();
+            image.src = 'assets/' + asset;
+            await image.decode();
+            return image;
+          };
+          const { portrait: original, eyelids } = clients[id];
           const canvas = document.createElement('canvas');
           canvas.width = portrait.width;
           canvas.height = portrait.height;
-          canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+          const context = canvas.getContext('2d');
+          context.drawImage(await load(original), 0, 0, canvas.width, canvas.height);
+          if (eyes !== 'open') {
+            const lids = await load(eyelids);
+            const width = eyes === 'closed' ? canvas.width : canvas.width / 2;
+            const x = eyes === 'right-wink' ? canvas.width / 2 : 0;
+            context.beginPath();
+            context.rect(x, 0, width, canvas.height);
+            context.clip();
+            context.drawImage(lids, 0, 0, canvas.width, canvas.height);
+          }
           return canvas.toDataURL() === portrait.toDataURL();
-        }, client);
-        assert.ok(portraitMatches, 'editor loads the original portrait');
+        }, { id: client, eyes });
+        assert.ok(await portraitMatches(), 'editor loads the original portrait');
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width);
+        if (index === 0) {
+          const portraitPosition = () => el('#studioPaint').evaluate(canvas => {
+            const rect = canvas.getBoundingClientRect();
+            return [rect.x, rect.y + window.scrollY, rect.width, rect.height];
+          });
+          const stage = await portraitPosition();
+          const finishBox = await el('#studioFinish').boundingBox();
+          if (touch) {
+            assert.ok(finishBox.y + finishBox.height <= height, 'Finish fits on screen with the closed tray');
+            await shot('carrello-chiuso', false);
+          }
+          await tap('#studioCart');
+          assert.equal(await expanded(), 'true');
+          await tap('#studioCart');
+          assert.equal(await expanded(), 'false');
+          await tool('shadow');
+          await color('Rosa confetto');
+          const expandedStage = await portraitPosition();
+          assert.deepEqual(expandedStage, stage, 'expanding the tray does not move the portrait');
+          await stroke([shadowPoint]);
+          assert.equal(await expanded(), 'true', 'touching the face cannot toggle the tray');
+          assert.equal(await sumAlpha(), 0, 'incomplete selection cannot apply pigment');
+          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width);
+          if (touch) {
+            await page.evaluate(() => window.scrollTo(0, 0));
+            await shot('carrello-aperto', false);
+          }
+          if (touch) await shot('palette-completa');
+        }
         await tool('shadow');
         assert.deepEqual(await el('#studioPalette button').evaluateAll(buttons =>
           buttons.map(button => button.getAttribute('aria-label'))), shadowColors);
@@ -157,6 +243,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await stroke(left, async () => {
           assert.equal(await el('.studio-tool').isVisible(), true, 'brush follows an active gesture');
           assert.equal(await eyeState(), 'closed', 'brush closes eyes while held');
+          assert.ok(await portraitMatches('closed'), 'SVG eyelids match the portrait at their displayed scale');
         });
         assert.equal(await eyeState(), 'open', 'eyes reopen on release');
         const second = (await pixels([shadowPoint]))[0][3];
@@ -202,9 +289,9 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         }
         assert.equal(new Set(shadowRenders).size, finishes.length, 'three static eyeshadow finishes');
         if (viewport === '412x915') {
-          await finish('Soft');
           for (const [index, name] of shadowColors.entries()) {
             await color(name);
+            await finish('Soft');
             await stroke(left);
             await stroke(right);
             await portraitShot(client, 'tonalita-' + (index + 1));
@@ -236,7 +323,9 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         for (const cheek of cheeks) await stroke(sweep(...cheek));
         const sparkleCheeks = await paintBytes();
         assert.notEqual(sparkleCheeks, pearlCheeks);
+        await color('Pesca');
         await tap('#studioHearts');
+        await finish('Sparkle');
         for (const cheek of cheeks) await stroke(sweep(...cheek));
         const fantasyCheeks = await paintBytes();
         assert.notEqual(fantasyCheeks, sparkleCheeks);
@@ -249,9 +338,8 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         await clear();
         assert.equal(await paintBytes(), eyesOnly, 'category clear also removes hearts and sparkles');
         await tap('#studioUndo');
-        await tap('#studioHearts');
         await tool('lips');
-        assert.equal(await el('#studioPalette button').count(), 5);
+        assert.equal(await el('#studioPalette button').count(), 4);
         await color('Gloss trasparente');
         assert.deepEqual(await pixels([lip, corner]), [[0, 0, 0, 0], [0, 0, 0, 0]]);
         await stroke(sweep(cx, lower, 12));
@@ -324,12 +412,13 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
           for (const point of [[160, 335], [196, 335], [178, 348], [321, 339], [347, 339], [246, 204], [268, 204]]) {
             await stroke([point]);
           }
-          assert.match(await el('#studioChoice').innerText(), /Hai già 6 decori/);
+          assert.match(await el('#studioStatus').innerText(), /Hai già 6 decori/);
           for (let move = 0; move < 7; move++) await tap('#studioUndo');
         }
         assert.equal(await el('#studioPortrait').getAttribute('data-eyes'), 'open');
         {
-          const closed = page.waitForFunction(() => document.querySelector('#studioPortrait').dataset.eyes === 'closed', null, { timeout: 7000 });
+          const pose = { alice: 'left-wink', chiara: 'right-wink' }[client] ?? 'closed';
+          const closed = page.waitForFunction(value => document.querySelector('#studioPortrait').dataset.eyes === value, pose, { timeout: 7000 });
           await page.emulateMedia({ reducedMotion: 'no-preference' });
           await closed;
           await page.waitForFunction(() => document.querySelector('#studioPortrait').dataset.eyes === 'open');
@@ -360,19 +449,39 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         assert.equal(await sumAlpha(), 0);
         await tap('#studioUndo');
         assert.equal(await sumAlpha(), beforeNavigation, 'reset is reversible');
+        const exactLook = await paintBytes();
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
         await tap('#studioFinish');
-        await el('#studioResult:not([hidden])').waitFor();
-        await portraitShot(client, 'sorriso');
-        assert.equal(await sumAlpha(), 0, 'result composites makeup on the portrait');
+        const stage = name => el('#studioEditor[data-reveal="' + name + '"]').waitFor();
+        await stage('eyes');
+        assert.equal(await eyeState(), 'closed');
+        assert.ok(await portraitMatches('closed'), 'closed Reveal eyes use the original calibrated overlay');
+        await portraitShot(client, 'reveal-1-palpebre');
+        await stage('magic');
+        await page.waitForTimeout(350);
+        await portraitShot(client, 'reveal-2-magia');
+        await stage('smile');
+        await portraitShot(client, 'reveal-3-sorriso');
+        await stage('final');
+        await portraitShot(client, 'reveal-4-finale');
+        const finalPortrait = await imageBytes('#studioPortrait');
+        assert.equal(await eyeState(), 'open');
         assert.equal(await el('.studio-tool').isVisible(), false);
+        await tap('#studioReplay');
+        await stage('eyes');
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await stage('final');
+        assert.equal(await imageBytes('#studioPortrait'), finalPortrait, 'replay and reduced motion preserve the final composite');
+        await portraitShot(client, 'movimento-ridotto');
         await tap('#studioResume');
-        assert.equal(await sumAlpha(), beforeNavigation);
+        assert.equal(await paintBytes(), exactLook, 'resuming restores pigment and decals byte for byte');
         await tap('#studioFinish');
-        await tap('#studioClients');
-        await el('#studioSelection:not([hidden])').waitFor();
+        await stage('final');
+        if (client === 'chiara') await tap('#studioBack');
+        else await tap('#studioClients');
+        if (client !== 'chiara') await el('#studioSelection:not([hidden])').waitFor();
         checks.push({ client, originalPortrait: true, shadowColors: 9, finishes: 3, microhearts: true, decorations: 8, resize: true, progressiveAlpha: [first, second], clipping, blink: true, reducedMotion: true, savedSession: true, complete: true });
       }
-      await tap('#studioHome');
       await el('#home.on').waitFor();
       assert.deepEqual(await page.evaluate(() => ({ ...localStorage })), saved, 'wallet, gift, purchases and room are byte-preserved');
       await tap('#play');
@@ -391,3 +500,57 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
     }
   });
 }
+
+test('Reveal accepts empty and single-product looks, and leaving cancels pending stages', { timeout: 45000 }, async () => {
+  const browser = await chromium.launch(process.env.SPA_CHROME_PATH ?
+    { executablePath: process.env.SPA_CHROME_PATH, args: ['--no-sandbox'] } : { channel: 'chrome' });
+  try {
+    const page = await browser.newPage({ viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true });
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const tap = selector => page.locator(selector).tap();
+    const studio = page.locator('#studioEditor');
+    const stage = value => studio.and(page.locator('[data-reveal="' + value + '"]')).waitFor();
+    const paint = page.locator('#studioPaint');
+    const bytes = () => paint.evaluate(canvas => canvas.toDataURL());
+    await page.goto(process.env.SPA_URL || 'http://127.0.0.1:8000/');
+    await tap('#makeup');
+    await tap('#studioCards [data-client=sofia]');
+    await studio.waitFor();
+    const saved = await page.evaluate(() => ({ ...localStorage }));
+    const empty = await bytes();
+    await tap('#studioFinish');
+    await stage('eyes');
+    await stage('magic');
+    assert.equal(await bytes(), empty, 'an empty look has no celebratory pigment or particles');
+    await stage('final');
+    await tap('#studioResume');
+    assert.equal(await bytes(), empty);
+    await paint.scrollIntoViewIfNeeded();
+    const box = await paint.boundingBox();
+    await page.touchscreen.tap(box.x + 188 * box.width / 512, box.y + 258 * box.height / 640);
+    const single = await bytes();
+    assert.notEqual(single, empty);
+    await tap('#studioFinish');
+    await stage('eyes');
+    await tap('#studioHome');
+    await page.locator('#home.on').waitFor();
+    await page.waitForTimeout(4200);
+    assert.equal(await studio.getAttribute('data-reveal'), null, 'the old timers do not advance a hidden Studio');
+    await tap('#makeup');
+    await tap('#studioCards [data-client=sofia]');
+    await studio.waitFor();
+    assert.equal(await bytes(), single, 'the interrupted Reveal preserves the single product');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await tap('#studioFinish');
+    await stage('final');
+    await tap('#studioReplay');
+    await stage('final');
+    await tap('#studioResume');
+    assert.equal(await bytes(), single);
+    assert.deepEqual(await page.evaluate(() => ({ ...localStorage })), saved);
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});

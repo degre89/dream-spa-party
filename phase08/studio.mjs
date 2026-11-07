@@ -1,9 +1,10 @@
 import { clients } from '../phase03/clients.mjs?v=07a';
-import { drawExpression } from '../phase04/expressions.mjs?v=08a';
+import { drawExpression } from '../phase04/expressions.mjs?v=08b3';
 import { faces, palettes } from './geometry.mjs?v=08b2';
-import { createLook, allowed, createPaintView } from './paint.mjs?v=08b2';
+import { createLook, allowed, createPaintView, drawDecoration } from './paint.mjs?v=08b3';
 
-import { decorations, decorationDetails, finishes } from './fantasy.mjs?v=08b2';
+import { eyeSlices, reactions, reactionFrames } from './reveal.mjs?v=08b3';
+import { decorations, decorationDetails, finishes } from './fantasy.mjs?v=08b3';
 
 export function mountMakeup({ onHome, bindAction }) {
   const get = id => document.getElementById('studio' + id);
@@ -24,8 +25,12 @@ export function mountMakeup({ onHome, bindAction }) {
   let client, look, image, lids;
   let category = 'shadow', choice = 0;
   let finish = 'Soft', hearts = false;
+  let draft = null;
   let active = null, stroke = null, previous = null, preview = null;
-  let closed = false, result = false, blinkTimer, openTimer, effect;
+  let closed = false, result = false, blinkTimer, effect;
+  let revealPhase = '', smile = false;
+  const blinkFrames = [];
+  const revealTimers = [];
   let loadVersion = 0, pendingConfirmation, shineFrame;
   let shinePulse = 0;
 
@@ -61,13 +66,22 @@ export function mountMakeup({ onHome, bindAction }) {
     if (!image) return;
     faceContext.clearRect(0, 0, 768, 960);
     faceContext.drawImage(image, 0, 0, 768, 960);
-    if (closed && lids) faceContext.drawImage(lids, 0, 0, 768, 960);
+    if (lids) for (const [x, width] of eyeSlices(closed, 768)) {
+      // The original SVGs have different intrinsic sizes. Clip in portrait
+      // coordinates after scaling each overlay to the same portrait rectangle.
+      faceContext.save();
+      faceContext.beginPath();
+      faceContext.rect(x, 0, width, 960);
+      faceContext.clip();
+      faceContext.drawImage(lids, 0, 0, 768, 960);
+      faceContext.restore();
+    }
   }
 
   function redraw() {
     if (!look || !image) return;
     if (!result) drawPortrait();
-    portrait.dataset.eyes = closed ? 'closed' : 'open';
+    portrait.dataset.eyes = closed === true ? 'closed' : closed ? closed + '-wink' : 'open';
     paint.rebuild(look, closed);
     compose();
     get('Undo').disabled = !histories.get(client).length;
@@ -75,112 +89,163 @@ export function mountMakeup({ onHome, bindAction }) {
 
   function compose() {
     if (result) drawPortrait();
-    paint.draw(look, preview, shinePulse);
-    if (result) {
-      // Warp the finished composite together so lips and pigment keep alignment.
+    paint.draw(look, preview, shinePulse, revealPhase === 'magic', !smile);
+    if (smile) {
+      // Pigment moves with the portrait. Decals are drawn afterward in their original positions.
       faceContext.drawImage(surface, 0, 0, 768, 960);
       const original = faceContext.getImageData(0, 0, 768, 960);
-      faceContext.putImageData(drawExpression(faceContext, original, client, true), 0, 0);
+      faceContext.putImageData(drawExpression(faceContext, original, client, true, reactions[client]), 0, 0);
       context.clearRect(0, 0, 512, 640);
+      for (const decoration of look.decorations) drawDecoration(context, decoration);
     }
   }
 
   function cancelBlink() {
     clearTimeout(blinkTimer);
-    clearTimeout(openTimer);
+    for (const timer of blinkFrames.splice(0)) clearTimeout(timer);
     closed = false;
+  }
+  function setEyePose(pose) {
+    closed = pose;
+    redraw();
   }
   function scheduleBlink() {
     clearTimeout(blinkTimer);
     if (reduced.matches || document.hidden || editor.hidden || result ||
         !document.getElementById('makeupStudio').classList.contains('on')) return;
+    const profile = reactions[client];
     blinkTimer = setTimeout(() => {
-      if (!active) {
-        closed = true;
-        redraw();
-        openTimer = setTimeout(() => { closed = false; redraw(); }, 145);
+      if (active === null && !draft) {
+        blinkFrames.length = 0;
+        const frames = profile.wink ? reactionFrames(profile) : [[0, true], [profile.blink, false]];
+        for (const [delay, pose] of frames) blinkFrames.push(setTimeout(() => setEyePose(pose), delay));
+        if (profile.magic) {
+          shimmer([329, 267]);
+        }
       }
       scheduleBlink();
-    }, 4100);
+    }, profile.pause);
+  }
+
+  const categories = { shadow: 'Occhi', blush: 'Blush', lips: 'Labbra', jewels: 'Decorazioni' };
+  const productNames = { shadow: 'Ombretto', blush: 'Blush', lips: 'Rossetto', gloss: 'Gloss', jewels: 'Decorazione' };
+  const glossIndex = palettes.lips.colors.findIndex(([, color]) => color === null);
+  const tray = get('Options');
+
+  function setTray(next, returnFocus = false) {
+    draft = next;
+    controls();
+    if (returnFocus) {
+      get('Cart').focus({ preventScroll: true });
+      window.scrollTo(0, 0);
+    }
+  }
+
+  function commitChoice(color, texture = 'Soft') {
+    ({ category, hearts } = draft);
+    choice = color;
+    finish = texture;
+    get('Status').textContent = '';
+    setTray(null, true);
   }
 
   function controls() {
-    const entry = palettes[category];
-    for (const button of get('Categories').children) button.setAttribute('aria-pressed', button.dataset.category === category);
+    tray.hidden = !draft;
+    get('Cart').setAttribute('aria-expanded', Boolean(draft));
     get('Palette').replaceChildren();
-    entry.colors.forEach(([name, color, symbol], index) => {
+    get('Products').replaceChildren();
+    for (const button of get('Categories').children) {
+      button.setAttribute('aria-pressed', button.dataset.category === draft?.category);
+    }
+    announceChoice();
+    get('Clear').textContent = 'Pulisci ' + categories[category].toLowerCase();
+    cursor.firstElementChild.setAttribute('href', 'phase08/tools.svg#' + category);
+    if (!draft) return;
+
+    const entry = palettes[draft.category];
+    const products = draft.category === 'lips' ? ['lips', 'gloss'] : [draft.category];
+    for (const product of products) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'pill';
+      button.textContent = productNames[product];
+      button.setAttribute('aria-pressed', product === draft.product);
+      bindAction(button, () => {
+        if (product === 'gloss') return commitChoice(glossIndex);
+        draft.product = product;
+        draft.choice = null;
+        controls();
+        get('Palette').firstElementChild.focus({ preventScroll: true });
+      });
+      get('Products').append(button);
+    }
+    get('Hint').textContent = !draft.product ? 'Scegli un prodotto.' :
+      draft.choice !== null ? 'Scegli la finitura.' :
+      draft.category === 'jewels' ? 'Scegli il tuo decoro.' : 'Scegli un colore.';
+    if (draft.product) entry.colors.forEach(([name, color, symbol], index) => {
+      if (color === null) return;
       const button = document.createElement('button');
       button.type = 'button';
       button.setAttribute('aria-label', name);
-      button.setAttribute('aria-pressed', index === choice);
+      button.title = name;
+      button.setAttribute('aria-pressed', index === draft.choice);
       const swatch = document.createElement('span');
-      swatch.style.background = color ?? 'linear-gradient(135deg, #fff, #edd8ff, #fff)';
+      swatch.style.background = color;
       if (symbol) {
         swatch.innerHTML = '<svg viewBox="-12 -12 24 24" aria-hidden="true"><path fill="' + color +
           '" stroke="#fff5db" d="' + decorations[symbol] + '"/><path fill="none" stroke="#62417a99" d="' +
           (decorationDetails[symbol] ?? '') + '"/></svg>';
         swatch.style.background = '#8a62a7';
-      } else if (!color) swatch.textContent = '✧';
+      }
       button.append(swatch);
       bindAction(button, () => {
-        stopGesture();
-        choice = index;
+        if (draft.category === 'jewels') return commitChoice(index);
+        draft.choice = index;
         controls();
         get('Palette').children[index].focus({ preventScroll: true });
       });
       get('Palette').append(button);
     });
-    get('Hint').textContent = entry.hint;
-    updateFinishes();
-    announceChoice();
-    get('Clear').textContent = 'Pulisci ' + entry.label.toLowerCase();
-    cursor.firstElementChild.setAttribute('href', 'phase08/tools.svg#' + category);
-  }
-
-  function updateFinishes() {
-    get('Finishes').hidden = category === 'jewels' || selected()[1] === null;
-    for (const button of get('Finishes').children) button.setAttribute('aria-pressed', button.textContent === finish);
-    get('Hearts').hidden = category !== 'blush';
-    get('Hearts').setAttribute('aria-pressed', hearts);
+    get('Finishes').hidden = draft.choice === null;
+    get('Hearts').hidden = draft.category !== 'blush' || !draft.product;
+    get('Hearts').setAttribute('aria-pressed', draft.hearts);
   }
 
   function announceChoice() {
+    const product = selected()[1] === null ? 'gloss' : category;
     const detail = category === 'jewels' ? (look?.decorations.length ?? 0) + '/6' :
-      selected()[1] === null ? '' : finish + (category === 'blush' && hearts ? ' + microcuoricini' : '');
-    get('Choice').textContent = [selected()[0], detail].filter(Boolean).join(' · ');
+      product === 'gloss' ? '' : finish + (category === 'blush' && hearts ? ' + microcuoricini' : '');
+    get('Choice').textContent = [productNames[product], selected()[0], detail].filter(Boolean).join(' · ');
   }
 
   for (const name of finishes) {
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = name;
-    bindAction(button, () => {
-      stopGesture();
-      finish = name;
-      updateFinishes();
-      announceChoice();
-    });
+    bindAction(button, () => commitChoice(draft.choice, name));
     get('Finishes').append(button);
   }
   bindAction(get('Hearts'), () => {
-    stopGesture();
-    hearts = !hearts;
-    updateFinishes();
-    announceChoice();
+    draft.hearts = !draft.hearts;
+    get('Hearts').setAttribute('aria-pressed', draft.hearts);
   });
 
-  for (const [id, entry] of Object.entries(palettes)) {
+  function openCategory(id) {
+    stopGesture();
+    setTray(draft?.category === id ? null : { category: id, product: null, choice: null, hearts: id === category && hearts });
+  }
+
+  bindAction(get('Cart'), () => openCategory(draft?.category ?? category));
+  tray.addEventListener('keydown', event => {
+    if (event.key === 'Escape') setTray(null, true);
+  });
+  for (const [id, label] of Object.entries(categories)) {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.category = id;
     button.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true"><use href="phase08/tools.svg#' + id + '"/></svg>';
-    button.append(entry.label);
-    bindAction(button, () => {
-      stopGesture();
-      category = id;
-      choice = 0;
-      controls();
-    });
+    button.append(label);
+    bindAction(button, () => openCategory(id));
     get('Categories').append(button);
   }
 
@@ -216,7 +281,8 @@ export function mountMakeup({ onHome, bindAction }) {
       get('Result').hidden = true;
       get('Title').textContent = entry.name + ' · Makeup';
       surface.setAttribute('aria-label', 'Applica il trucco sul viso di ' + entry.name);
-      controls();
+      setTray(null);
+      get('Status').textContent = '';
       redraw();
       scheduleBlink();
       get('Title').focus({ preventScroll: true });
@@ -242,6 +308,9 @@ export function mountMakeup({ onHome, bindAction }) {
     ++loadVersion;
     stopGesture();
     cancelBlink();
+    clearReveal();
+    result = false;
+    smile = false;
     selection.hidden = false;
     editor.hidden = true;
     get('Clients').hidden = true;
@@ -307,10 +376,11 @@ export function mountMakeup({ onHome, bindAction }) {
   }
 
   surface.addEventListener('pointerdown', event => {
-    if (result || active !== null || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (result || draft || active !== null || (event.pointerType === 'mouse' && event.button !== 0)) return;
     event.preventDefault();
     stopShine();
     cancelBlink();
+    effect?.cancel();
     redraw();
     active = event.pointerId;
     surface.setPointerCapture(active);
@@ -320,7 +390,7 @@ export function mountMakeup({ onHome, bindAction }) {
     else apply([previous]);
   });
   surface.addEventListener('pointermove', event => {
-    if (result || (active !== null && event.pointerId !== active)) return;
+    if (result || draft || (active !== null && event.pointerId !== active)) return;
     cursorAt(event);
     const position = point(event);
     if (category === 'jewels') previewAt(position);
@@ -347,7 +417,7 @@ export function mountMakeup({ onHome, bindAction }) {
     stopGesture();
     if (appliedGloss) animateShine();
     announceChoice();
-    if (full) get('Choice').textContent = 'Hai già 6 decori. Toccane uno per toglierlo.';
+    get('Status').textContent = full ? 'Hai già 6 decori. Toccane uno per toglierlo.' : '';
     scheduleBlink();
   });
   function stopGesture() {
@@ -376,9 +446,16 @@ export function mountMakeup({ onHome, bindAction }) {
   document.addEventListener('visibilitychange', () => {
     cancelBlink();
     stopGesture();
+    if (document.hidden && result && !editor.hidden) presentReveal();
     if (!document.hidden) scheduleBlink();
   });
-  reduced.addEventListener('change', () => { cancelBlink(); stopShine(); effect?.cancel(); redraw(); scheduleBlink(); });
+  reduced.addEventListener('change', () => {
+    cancelBlink();
+    stopShine();
+    effect?.cancel();
+    if (result && !editor.hidden) presentReveal();
+    else { redraw(); scheduleBlink(); }
+  });
 
   bindAction(get('Undo'), () => {
     stopGesture();
@@ -404,25 +481,69 @@ export function mountMakeup({ onHome, bindAction }) {
     controls();
     redraw();
   }));
-  bindAction(get('Finish'), () => {
+  function setRevealPhase(phase, eyes, smiling) {
+    revealPhase = phase;
+    editor.dataset.reveal = phase;
+    smile = smiling;
+    setEyePose(eyes);
+  }
+
+  function clearReveal() {
+    for (const timer of revealTimers.splice(0)) clearTimeout(timer);
+    stopShine();
+    effect?.cancel();
+    revealPhase = '';
+    delete editor.dataset.reveal;
+  }
+
+  function presentReveal() {
+    clearReveal();
+    setRevealPhase('final', false, true);
+    get('ResultTitle').textContent = 'Il tuo look è pronto! ✦';
+    get('ResultActions').hidden = false;
+    if (!document.hidden) get('ResultTitle').focus({ preventScroll: true });
+  }
+
+  function startReveal() {
     stopGesture();
     cancelBlink();
+    clearReveal();
+    setTray(null);
     look.completed = true;
     result = true;
     get('Tools').hidden = true;
     get('Result').hidden = false;
-    redraw();
-    shimmer([256, 175]);
-    if (look.strokes.some(item => item.category === 'lips' && item.color === null)) animateShine();
-    get('Result').querySelector('h3').focus({ preventScroll: true });
-  });
+    get('ResultTitle').textContent = 'Magic Reveal ✦';
+    get('ResultTitle').focus({ preventScroll: true });
+    if (reduced.matches || document.hidden) return presentReveal();
+
+    get('ResultActions').hidden = true;
+    const later = (delay, action) => revealTimers.push(setTimeout(action, delay));
+    const profile = reactions[client];
+    setRevealPhase('eyes', true, false);
+    later(1000, () => {
+      setRevealPhase('magic', true, false);
+      if (look.strokes.length || look.decorations.length) animateShine();
+    });
+    later(2000, () => {
+      setRevealPhase('smile', false, true);
+      for (const [delay, pose] of reactionFrames(profile)) later(delay, () => setEyePose(pose));
+    });
+    later(4000, presentReveal);
+  }
+
+  bindAction(get('Finish'), startReveal);
+  bindAction(get('Replay'), startReveal);
+  bindAction(get('Back'), () => { selectionView(); onHome(); });
   bindAction(get('Resume'), () => {
-    stopShine();
+    clearReveal();
     result = false;
+    smile = false;
     get('Tools').hidden = false;
     get('Result').hidden = true;
     redraw();
     scheduleBlink();
+    get('Cart').focus({ preventScroll: true });
   });
   function stopShine() {
     cancelAnimationFrame(shineFrame);

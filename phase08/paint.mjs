@@ -1,6 +1,6 @@
-import { decorations, decorationDetails, stampFinish } from './fantasy.mjs?v=08b2';
+import { decorations, decorationDetails, stampFinish } from './fantasy.mjs?v=08b3';
 import { faces, palettes } from './geometry.mjs?v=08b2';
-import { createShadowFinish, drawGloss, makeupBuffer } from './finish.mjs?v=08b1';
+import { createShadowFinish, drawGloss, makeupBuffer } from './finish.mjs?v=08b3';
 
 // One versioned session record per client. Coordinates remain in portrait units.
 export function createLook(client) {
@@ -119,7 +119,7 @@ export function createPaintView(context) {
     for (const canvas of layers.values()) canvas.getContext('2d').clearRect(0, 0, 512, 640);
     for (const stroke of look.strokes) append(look.client, stroke);
   }
-  function draw(look, preview, pulse = 0) {
+  function draw(look, preview, pulse = 0, reveal = false, includeDecorations = true) {
     context.clearRect(0, 0, 512, 640);
     for (const [key, layer] of layers) {
       let visible = layer;
@@ -147,7 +147,29 @@ export function createPaintView(context) {
       drawGloss(light, faces[look.client].gloss, layers.get('gloss'), pulse);
       context.drawImage(light.canvas, 0, 0);
     }
-    for (const decoration of look.decorations) drawDecoration(context, decoration);
+    if (includeDecorations) for (const decoration of look.decorations) drawDecoration(context, decoration);
+    if (reveal && pulse > 0) {
+      // Source-atop keeps the sweep and glints inside the visible pigment and decals.
+      context.save();
+      context.globalCompositeOperation = 'source-atop';
+      for (const [index, stroke] of look.strokes.entries()) {
+        const [x, y] = stroke.points[Math.floor(stroke.points.length / 2)];
+        const radius = stroke.finish === 'Sparkle' ? 5 : 12;
+        const fade = context.createRadialGradient(x, y, 0, x, y, radius);
+        fade.addColorStop(0, '#fff9e8');
+        fade.addColorStop(1, '#fff0');
+        context.globalAlpha = pulse * (stroke.finish === 'Soft' ? .28 : .68);
+        context.fillStyle = fade;
+        context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        if (index >= 23) break;
+      }
+      for (const { x, y } of look.decorations) {
+        context.globalAlpha = pulse * .58;
+        context.fillStyle = '#fff9ed';
+        context.fill(new Path2D(`M${x} ${y-5}l1 4 4 1-4 1-1 4-1-4-4-1 4-1z`));
+      }
+      context.restore();
+    }
     if (preview) drawDecoration(context, preview, true);
   }
   return { append, rebuild, draw };

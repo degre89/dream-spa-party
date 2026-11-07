@@ -1,3 +1,5 @@
+import { eyeSlices } from './reveal.mjs?v=08b3';
+
 // These buffers stay in portrait units and never change the stored gestures.
 export function makeupBuffer() {
   const canvas = document.createElement('canvas');
@@ -49,6 +51,7 @@ function softMask(eyes, sources = eyes, lashFade = 1.9) {
 export function createShadowFinish(regions) {
   const cache = new Map();
   const finish = makeupBuffer();
+  const mask = makeupBuffer();
   return (client, layer, closed) => {
     if (!cache.has(client)) {
       const open = regions(client, 'shadow').map(path => columns(finish, path));
@@ -58,19 +61,29 @@ export function createShadowFinish(regions) {
     const { open, shut, openMask, shutMask } = cache.get(client);
     finish.globalCompositeOperation = 'source-over';
     finish.clearRect(0, 0, 512, 640);
-    if (closed) {
+    finish.drawImage(layer, 0, 0);
+    const slices = eyeSlices(closed, 512);
+    if (slices.length) {
+      for (const [x, width] of slices) finish.clearRect(x, 0, width, 640);
       // Stretch each painted column between the matching fold and lash line.
       // The original pigment, colour split and partial coverage are preserved.
       for (const [index, eye] of shut.entries()) {
         for (const [x, [top, bottom]] of eye) {
+          if (!slices.some(([left, width]) => x >= left && x < left + width)) continue;
           const source = open[index].get(x);
           if (source) finish.drawImage(layer, x, source[0], 1, source[1] - source[0],
             x, top, 1, bottom - top);
         }
       }
-    } else finish.drawImage(layer, 0, 0);
+    }
+    mask.clearRect(0, 0, 512, 640);
+    mask.drawImage(openMask, 0, 0);
+    for (const [x, width] of slices) {
+      mask.clearRect(x, 0, width, 640);
+      mask.drawImage(shutMask, x, 0, width, 640, x, 0, width, 640);
+    }
     finish.globalCompositeOperation = 'destination-in';
-    finish.drawImage(closed ? shutMask : openMask, 0, 0);
+    finish.drawImage(mask.canvas, 0, 0);
     return finish.canvas;
   };
 }

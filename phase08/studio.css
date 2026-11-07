@@ -46,3 +46,31 @@
 #studioFinishes button, #studioHearts { min-height: 38px; padding: 3px 9px; border: 2px solid #d9c4e6; border-radius: 14px; background: #fff; color: #623564; font-size: .8rem; }
 #studioHearts { margin-top: 5px; }
 #studioFinishes button[aria-pressed="true"], #studioHearts[aria-pressed="true"] { border-color: #723298; background: #f3e1ff; }
+
+#studioCart { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; }
+#studioCart[aria-expanded="true"] > :last-child { transform: rotate(180deg); }
+#studioChoice { margin: 0; }
+#studioStatus:empty { display: none; }
+#studioStatus { display: block; margin-block: 5px; font-size: .8rem; }
+#studioCategories { margin-block: 5px; }
+#studioCategories button { min-height: 44px; }
+#studioCategories svg { width: 20px; height: 20px; }
+#studioOptions { border-block: 1px solid #dec8ed; padding-block: 6px; margin-bottom: 5px; }
+#studioProducts { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+#studioProducts button, #studioFinishes button, #studioHearts,
+#studioCart, .studio-edits button, .studio-top button { min-height: 44px; }
+#studioProducts [aria-pressed="true"] { background: #ead4fa; }
+#studioFinish { margin-top: 5px; }
+#makeupStudio:has(#studioEditor:not([hidden])) { justify-content: flex-start; }
+@media (max-height: 650px) {
+  #studioTitle { margin: 0; }
+  .studio-mirror { width: min(90%, clamp(150px, 39dvh, 244px)); margin: 0 auto 8px; }
+  .studio-controls { padding: 6px; }
+}
+#studioCart { padding-inline: 9px; }
+#studioChoice { font-size: .73rem; }
+#studioTools > .studio-edits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#studioTools > .studio-edits button { padding-inline: 3px; font-size: .69rem; }
+@media (max-height: 760px) {
+  .studio-mirror { width: min(90%, clamp(150px, 35dvh, 250px)); }
+}

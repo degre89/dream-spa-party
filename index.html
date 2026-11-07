@@ -7,8 +7,8 @@
   <title>Dream Spa Party</title>
   <link rel="stylesheet" href="spa.css?v=06c">
   <link rel="stylesheet" href="phase07/hub.css?v=07br">
-  <link rel="stylesheet" href="phase08/studio.css?v=08b2">
-  <script type="module" src="spa.js?v=08b2"></script>
+  <link rel="stylesheet" href="phase08/studio.css?v=08b3">
+  <script type="module" src="spa.js?v=08b3"></script>
 </head>
 <body>
 <main class="app">
@@ -83,23 +83,33 @@
       </div>
       <div class="studio-controls">
         <div id="studioResult" hidden>
-          <h3 tabindex="-1">Il tuo look è pronto! ✦</h3>
+          <h3 id="studioResultTitle" tabindex="-1">Il tuo look è pronto! ✦</h3>
           <p>Un look da favola, creato da te.</p>
-          <button class="pill" id="studioResume">Ritocca il look</button>
+          <div id="studioResultActions" class="studio-edits">
+            <button class="pill" id="studioResume">Modifica look</button>
+            <button class="pill" id="studioReplay">Rivedi Magic Reveal</button>
+            <button class="pill" id="studioBack">Torna alla Spa</button>
+          </div>
         </div>
         <div id="studioTools">
-          <div id="studioCategories" role="group" aria-label="Strumenti"></div>
-          <p id="studioHint"></p>
-          <div id="studioPalette" role="group" aria-label="Tavolozza"></div>
-          <div id="studioFinishes" role="group" aria-label="Finitura"></div>
-          <button type="button" id="studioHearts" aria-pressed="false" hidden>♡ Microcuoricini</button>
-          <p id="studioChoice" role="status"></p>
-          <div class="studio-edits">
-            <button class="pill" id="studioUndo">Annulla gesto</button>
-            <button class="pill" id="studioClear">Pulisci</button>
-            <button class="pill" id="studioReset">Azzera look</button>
+          <button class="pill" id="studioCart" aria-controls="studioOptions" aria-expanded="false">
+            <span id="studioChoice" aria-live="polite"></span><span aria-hidden="true">⌄</span>
+          </button>
+          <div id="studioCategories" role="group" aria-label="Categorie"></div>
+          <div id="studioOptions" hidden>
+            <div id="studioProducts" role="group" aria-label="Prodotto"></div>
+            <p id="studioHint"></p>
+            <div id="studioPalette" role="group" aria-label="Colore o decorazione"></div>
+            <button type="button" id="studioHearts" aria-pressed="false" hidden>♡ Microcuoricini</button>
+            <div id="studioFinishes" role="group" aria-label="Finitura"></div>
           </div>
-          <button class="cta" id="studioFinish">✧ Look finito</button>
+          <span id="studioStatus" role="status"></span>
+          <div class="studio-edits">
+            <button class="pill" id="studioUndo">Annulla</button>
+            <button class="pill" id="studioClear">Pulisci</button>
+            <button class="pill" id="studioReset">Reset look</button>
+          </div>
+          <button class="cta" id="studioFinish">✧ Finito!</button>
         </div>
       </div>
     </div>

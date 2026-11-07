@@ -39,24 +39,25 @@ function warp(source, target, feature, marginX, marginY, offset) {
   }
 }
 
-export function drawExpression(context, original, id, happy) {
+export function drawExpression(context, original, id, happy, profile) {
   const result = context.createImageData(width, height);
   result.data.set(original.data);
   const { mouth, eyes, brows } = clients[id].landmarks;
   warp(original.data, result.data, mouth, 19, 20, (x, y) => {
     const corner = Math.min(1, (x / mouth[2]) ** 2);
-    return happy ? [x * .13, 4 - 13 * corner + y * .10] :
+    const smile = profile?.smile ?? 1;
+    return happy ? [x * .13 * smile, (4 - 13 * corner + y * .10) * smile] :
       [-x * .10, -9 + 29 * corner - y * .30];
   });
   for (const [index, eye] of eyes.entries()) {
     const inner = index === 0 ? 1 : -1;
     warp(original.data, result.data, eye, 11, 8, (x, y) =>
-      happy ? [0, -3 - Math.max(0, y) * .23] : [0, -inner * x * .08 - y * .11]);
+      happy ? [0, (-3 - Math.max(0, y) * .23) * (profile?.eyes ?? (profile ? .35 : 1))] : [0, -inner * x * .08 - y * .11]);
   }
   for (const [index, brow] of brows.entries()) {
     const inner = index === 0 ? 1 : -1;
     warp(original.data, result.data, brow, 9, 8, (x) =>
-      happy ? [0, -4] : [0, -3 - inner * x * .20]);
+      happy ? [0, -4 * (profile?.brows ?? (profile ? .28 : 1))] : [0, -3 - inner * x * .20]);
   }
   return result;
 }

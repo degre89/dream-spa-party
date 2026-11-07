@@ -19,18 +19,24 @@ export const decorationDetails = {
 
 export const finishes = ['Soft', 'Pearl', 'Sparkle'];
 
-const star = new Path2D('M0 -2.5 .55 -.55 2.5 0 .55 .55 0 2.5 -.55 .55 -2.5 0 -.55 -.55Z');
+const star = new Path2D('M0 -3.2 .9 -.9 3.2 0 .9 .9 0 3.2 -.9 .9 -3.2 0 -.9 -.9Z');
+const textures = {
+  shadow: { satin: .42, rx: 12, ry: 4.8, grid: 7, speck: .9 },
+  blush: { satin: .24, rx: 19, ry: 8.2, grid: 11, speck: 1.14 },
+  lips: { satin: .35, rx: 14, ry: 3.6, grid: 8, speck: .89 },
+};
 const heart = new Path2D(decorations['♥']);
 
 // Every stamp depends on its stored position, never on frame timing or the viewport.
 export function stampFinish(context, { category, color, finish, hearts }, x, y) {
   if (color === null) return;
   const cheek = category === 'blush';
+  const texture = textures[category];
   if (finish === 'Pearl' || finish === 'Sparkle') {
-    const intensity = (cheek ? .16 : .27) * (finish === 'Pearl' ? 1 : .5);
+    const intensity = texture.satin * (finish === 'Pearl' ? 1 : .27);
     context.save();
     context.translate(x, y - (cheek ? 2 : 0));
-    context.scale(cheek ? 14 : 10, cheek ? 6 : 3.4);
+    context.scale(texture.rx, texture.ry);
     const satin = context.createRadialGradient(0, 0, 0, 0, 0, 1);
     satin.addColorStop(0, 'rgba(255,245,250,' + intensity + ')');
     satin.addColorStop(.5, 'rgba(255,249,255,' + intensity * .58 + ')');
@@ -40,17 +46,19 @@ export function stampFinish(context, { category, color, finish, hearts }, x, y) 
     context.restore();
   }
   if (finish === 'Sparkle') {
-    const column = Math.round(x / 6);
-    const row = Math.round(y / 5);
-    const glintX = column * 6 + (column % 3 - 1) * 1.4;
-    const glintY = row * 5 + (column % 4 - 1.5) * 1.1;
+    const column = Math.round(x / texture.grid);
+    const row = Math.round(y / texture.grid);
+    const glintX = column * texture.grid + (column % 3 - 1) * 1.4;
+    const glintY = row * texture.grid + (column % 4 - 1.5) * 1.1;
+    const bright = (column + row) % 3 === 0;
     context.save();
     context.translate(glintX, glintY);
-    context.fillStyle = (column + row) % 3 === 0 ? '#fff9e9e6' : '#fff5ffb8';
-    if ((column + row) % 3 === 0) context.fill(star);
+    context.scale(texture.speck, texture.speck);
+    context.fillStyle = bright ? '#fff9ed' : '#fff5ffd9';
+    if (bright) context.fill(star);
     else {
       context.beginPath();
-      context.arc(0, 0, .9, 0, 2 * Math.PI);
+      context.arc(0, 0, 1.45, 0, 2 * Math.PI);
       context.fill();
     }
     context.restore();

@@ -86,6 +86,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
       for (const [id, zones] of clients) {
         await tap(`#studioCards [data-client="${id}"]`);
         await tap('#studioCategories [data-category="jewels"]');
+        await tap('#studioProducts button:text-is("Decorazione")');
         await tap('#studioPalette [aria-label="Luna"]');
         await surface.scrollIntoViewIfNeeded();
         const box = await surface.boundingBox();
@@ -100,7 +101,7 @@ for (const [width, height, touch] of [[320, 568, true], [412, 915, true], [1280,
         assert.match(await page.locator('#studioChoice').innerText(), /6\/6/, id);
         const [x, y, , radiusY] = zones[0];
         await place([x, y - radiusY + 1]);
-        assert.match(await page.locator('#studioChoice').innerText(), /Hai già 6 decori/, id);
+        assert.match(await page.locator('#studioStatus').innerText(), /Hai già 6 decori/, id);
         await tap('#studioUndo');
         assert.match(await page.locator('#studioChoice').innerText(), /5\/6/, id);
         await tap('#studioClear');
